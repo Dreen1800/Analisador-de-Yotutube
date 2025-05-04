@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import ChannelAnalysis from './pages/ChannelAnalysis';
+import AiChannelAnalyzer from './pages/AiChannelAnalyzer';
 import ApiKeys from './pages/ApiKeys';
 import NotFound from './pages/NotFound';
 
@@ -59,6 +60,7 @@ function App() {
           {/* Protected Routes */}
           <Route path="/dashboard" element={!user ? <Navigate to="/login" /> : <Dashboard />} />
           <Route path="/channel-analysis/:id?" element={!user ? <Navigate to="/login" /> : <ChannelAnalysis />} />
+          <Route path="/ai-analyzer" element={!user ? <Navigate to="/login" /> : <AiChannelAnalyzer />} />
           <Route path="/api-keys" element={!user ? <Navigate to="/login" /> : <ApiKeys />} />
           
           <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />

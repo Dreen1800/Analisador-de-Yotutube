@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { Menu, X, Youtube, LayoutDashboard, LineChart, Key, LogOut, User, ChevronDown } from 'lucide-react';
+import { Menu, X, Youtube, LayoutDashboard, LineChart, Key, LogOut, User, ChevronDown, Sparkles } from 'lucide-react';
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -39,6 +39,7 @@ const Navigation = () => {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Análise de Canal', href: '/channel-analysis', icon: LineChart },
+    { name: 'Analisador IA', href: '/ai-analyzer', icon: Sparkles },
     { name: 'Chaves API', href: '/api-keys', icon: Key },
   ];
   
