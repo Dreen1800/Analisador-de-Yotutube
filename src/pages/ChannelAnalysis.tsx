@@ -8,6 +8,7 @@ import VideoGallery from '../components/VideoGallery';
 import EngagementChart from '../components/EngagementChart';
 import ViewsDurationChart from '../components/ViewsDurationChart';
 import ExportOptions from '../components/ExportOptions';
+import CompetitorAnalysis from '../components/CompetitorAnalysis';
 import { Search, ArrowLeft, AlertCircle, Settings, BarChart2, Grid, List, Youtube, Loader } from 'lucide-react';
 
 interface AnalysisOptions {
@@ -32,6 +33,7 @@ const ChannelAnalysis = () => {
   
   const [channelUrl, setChannelUrl] = useState('');
   const [displayMode, setDisplayMode] = useState<'list' | 'gallery'>('list');
+  const [activeTab, setActiveTab] = useState<'videos' | 'competitors'>('videos');
   const [showOptions, setShowOptions] = useState(false);
   const [options, setOptions] = useState<AnalysisOptions>({
     maxVideos: 50,
@@ -283,43 +285,80 @@ const ChannelAnalysis = () => {
             </div>
           </div>
           
+          {/* Tabs para Análise de Vídeos e Análise de Concorrentes */}
           <div className="bg-white shadow-lg rounded-xl overflow-hidden mb-8 border border-gray-100">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 border-b border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-800">Análise de Vídeos</h2>
-              
-              <div className="flex space-x-2 mt-4 md:mt-0">
+            <div className="border-b border-gray-100">
+              <div className="flex">
                 <button
-                  onClick={() => setDisplayMode('list')}
-                  className={`inline-flex items-center px-4 py-2 text-sm rounded-lg transition-all ${
-                    displayMode === 'list' 
-                      ? 'bg-blue-100 text-blue-700 font-medium' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  onClick={() => setActiveTab('videos')}
+                  className={`px-6 py-4 font-medium text-sm focus:outline-none transition-colors ${
+                    activeTab === 'videos'
+                      ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                      : 'bg-gray-50 text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  <List className="w-4 h-4 mr-1.5" />
-                  Lista
+                  Análise de Vídeos
                 </button>
                 <button
-                  onClick={() => setDisplayMode('gallery')}
-                  className={`inline-flex items-center px-4 py-2 text-sm rounded-lg transition-all ${
-                    displayMode === 'gallery' 
-                      ? 'bg-blue-100 text-blue-700 font-medium' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  onClick={() => setActiveTab('competitors')}
+                  className={`px-6 py-4 font-medium text-sm focus:outline-none transition-colors ${
+                    activeTab === 'competitors'
+                      ? 'bg-white text-purple-600 border-b-2 border-purple-600'
+                      : 'bg-gray-50 text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  <Grid className="w-4 h-4 mr-1.5" />
-                  Galeria
+                  Análise de Concorrentes com IA
                 </button>
               </div>
             </div>
             
-            <div className="p-6">
-              {displayMode === 'list' ? (
-                <VideoList videos={currentAnalysis.videos} />
-              ) : (
-                <VideoGallery videos={currentAnalysis.videos} />
-              )}
-            </div>
+            {activeTab === 'videos' && (
+              <div>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 border-b border-gray-100">
+                  <h2 className="text-xl font-semibold text-gray-800">Análise de Vídeos</h2>
+                  
+                  <div className="flex space-x-2 mt-4 md:mt-0">
+                    <button
+                      onClick={() => setDisplayMode('list')}
+                      className={`inline-flex items-center px-4 py-2 text-sm rounded-lg transition-all ${
+                        displayMode === 'list' 
+                          ? 'bg-blue-100 text-blue-700 font-medium' 
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <List className="w-4 h-4 mr-1.5" />
+                      Lista
+                    </button>
+                    <button
+                      onClick={() => setDisplayMode('gallery')}
+                      className={`inline-flex items-center px-4 py-2 text-sm rounded-lg transition-all ${
+                        displayMode === 'gallery' 
+                          ? 'bg-blue-100 text-blue-700 font-medium' 
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <Grid className="w-4 h-4 mr-1.5" />
+                      Galeria
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="p-6">
+                  {displayMode === 'list' ? (
+                    <VideoList videos={currentAnalysis.videos} />
+                  ) : (
+                    <VideoGallery videos={currentAnalysis.videos} />
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {activeTab === 'competitors' && (
+              <CompetitorAnalysis 
+                channelId={currentChannel.channel_id} 
+                videoData={currentAnalysis.videos} 
+              />
+            )}
           </div>
           
           <div className="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100 p-6">
@@ -333,5 +372,3 @@ const ChannelAnalysis = () => {
 };
 
 export default ChannelAnalysis;
-
-// O código não apresenta erros aparentes.

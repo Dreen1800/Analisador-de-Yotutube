@@ -96,6 +96,55 @@ export interface Database {
           user_id?: string
         }
       }
+      competitors: {
+        Row: {
+          id: string
+          channel_id: string
+          title: string
+          parent_channel_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          channel_id: string
+          title: string
+          parent_channel_id: string
+          user_id?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          channel_id?: string
+          title?: string
+          parent_channel_id?: string
+          user_id?: string
+          created_at?: string
+        }
+      }
+      ai_analyses: {
+        Row: {
+          id: string
+          channel_id: string
+          analysis: Json
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          channel_id: string
+          analysis: Json
+          user_id?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          channel_id?: string
+          analysis?: Json
+          user_id?: string
+          created_at?: string
+        }
+      }
     }
   }
 }
