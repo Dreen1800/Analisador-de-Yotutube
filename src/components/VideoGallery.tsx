@@ -93,7 +93,7 @@ const VideoGallery = ({ videos }: VideoGalleryProps) => {
           onClick={() => handleSort('view_count')}
           className={`flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
             sortField === 'view_count' 
-              ? 'bg-blue-100 text-blue-700 font-medium' 
+              ? 'bg-purple-100 text-purple-700 font-medium' 
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -105,7 +105,7 @@ const VideoGallery = ({ videos }: VideoGalleryProps) => {
           onClick={() => handleSort('like_count')}
           className={`flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
             sortField === 'like_count' 
-              ? 'bg-blue-100 text-blue-700 font-medium' 
+              ? 'bg-purple-100 text-purple-700 font-medium' 
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -117,7 +117,7 @@ const VideoGallery = ({ videos }: VideoGalleryProps) => {
           onClick={() => handleSort('comment_count')}
           className={`flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
             sortField === 'comment_count' 
-              ? 'bg-blue-100 text-blue-700 font-medium' 
+              ? 'bg-purple-100 text-purple-700 font-medium' 
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -129,7 +129,7 @@ const VideoGallery = ({ videos }: VideoGalleryProps) => {
           onClick={() => handleSort('engagement_rate')}
           className={`flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
             sortField === 'engagement_rate' 
-              ? 'bg-blue-100 text-blue-700 font-medium' 
+              ? 'bg-purple-100 text-purple-700 font-medium' 
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -141,7 +141,7 @@ const VideoGallery = ({ videos }: VideoGalleryProps) => {
           onClick={() => handleSort('published_at')}
           className={`flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
             sortField === 'published_at' 
-              ? 'bg-blue-100 text-blue-700 font-medium' 
+              ? 'bg-purple-100 text-purple-700 font-medium' 
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -187,7 +187,7 @@ const VideoGallery = ({ videos }: VideoGalleryProps) => {
                 href={`https://www.youtube.com/watch?v=${video.video_id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-medium text-gray-900 hover:text-blue-600 line-clamp-2 h-10 mb-3 transition-colors"
+                className="text-sm font-medium text-gray-900 hover:text-purple-600 line-clamp-2 h-10 mb-3 transition-colors"
               >
                 {video.title}
               </a>
@@ -199,7 +199,7 @@ const VideoGallery = ({ videos }: VideoGalleryProps) => {
               
               <div className="grid grid-cols-3 gap-2 text-xs mt-auto">
                 <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg border border-gray-100">
-                  <Eye className="w-4 h-4 text-blue-600 mb-1" />
+                  <Eye className="w-4 h-4 text-purple-600 mb-1" />
                   <span className="font-medium">{formatNumber(video.view_count)}</span>
                   <span className="text-gray-500">Views</span>
                 </div>
@@ -223,11 +223,11 @@ const VideoGallery = ({ videos }: VideoGalleryProps) => {
                   <div className="flex items-center">
                     <div className="w-16 h-1.5 bg-gray-200 rounded-full mr-2">
                       <div 
-                        className="h-1.5 bg-blue-600 rounded-full" 
+                        className="h-1.5 bg-purple-600 rounded-full" 
                         style={{ width: `${Math.min(100, video.engagement_rate * 100 * 5)}%` }}
                       ></div>
                     </div>
-                    <span className="text-xs font-medium px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
+                    <span className="text-xs font-medium px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full">
                       {(video.engagement_rate * 100).toFixed(1)}%
                     </span>
                   </div>

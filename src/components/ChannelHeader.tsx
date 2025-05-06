@@ -40,7 +40,7 @@ const ChannelHeader = ({ channel, analysisDate }: ChannelHeaderProps) => {
   
   return (
     <div className="bg-white shadow-lg rounded-xl overflow-hidden mb-8 border border-gray-100">
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-1"></div>
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-1"></div>
       <div className="p-6">
         <div className="flex flex-col md:flex-row items-start md:items-center">
           <div className="flex-shrink-0 mb-6 md:mb-0 md:mr-8">

@@ -65,7 +65,7 @@ const ChannelAnalysis = () => {
     return (
       <div className="container mx-auto px-4 py-12">
         <div className="flex flex-col justify-center items-center h-64 bg-white shadow-lg rounded-xl p-8">
-          <Loader className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+          <Loader className="w-12 h-12 text-purple-600 animate-spin mb-4" />
           <p className="text-gray-700 text-lg">Analisando dados do canal...</p>
           <p className="text-gray-500 text-sm mt-2">Isso pode levar alguns instantes, dependendo do tamanho do canal.</p>
         </div>
@@ -78,7 +78,7 @@ const ChannelAnalysis = () => {
       <div className="mb-6">
         <button
           onClick={() => navigate('/dashboard')}
-          className="inline-flex items-center text-gray-700 hover:text-blue-600 transition-colors"
+          className="inline-flex items-center text-gray-700 hover:text-purple-600 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Voltar para o Dashboard
@@ -120,7 +120,7 @@ const ChannelAnalysis = () => {
       {!currentChannel && (
         <div className="bg-white shadow-lg rounded-xl p-8 mb-8 border border-gray-100">
           <div className="flex items-center mb-6">
-            <Youtube className="w-7 h-7 text-blue-600 mr-3" />
+            <Youtube className="w-7 h-7 text-purple-600 mr-3" />
             <h2 className="text-2xl font-semibold text-gray-800">Analisar Canal do YouTube</h2>
           </div>
           
@@ -136,7 +136,7 @@ const ChannelAnalysis = () => {
                 <input
                   type="text"
                   id="channelUrl"
-                  className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full pl-10 p-3 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full pl-10 p-3 focus:ring-purple-500 focus:border-purple-500 transition-all"
                   placeholder="https://www.youtube.com/c/NomeDoCanal"
                   value={channelUrl}
                   onChange={(e) => setChannelUrl(e.target.value)}
@@ -153,7 +153,7 @@ const ChannelAnalysis = () => {
                 Chave da API
               </label>
               <select
-                className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-3 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-3 focus:ring-purple-500 focus:border-purple-500 transition-all"
                 disabled={apiKeys.length === 0}
               >
                 {currentKey ? (
@@ -168,7 +168,7 @@ const ChannelAnalysis = () => {
               <button
                 type="button"
                 onClick={() => setShowOptions(!showOptions)}
-                className="flex items-center text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                className="flex items-center text-sm text-gray-600 hover:text-purple-600 transition-colors"
               >
                 <Settings className="w-4 h-4 mr-2" />
                 {showOptions ? 'Ocultar Opções de Análise' : 'Mostrar Opções de Análise'}
@@ -184,7 +184,7 @@ const ChannelAnalysis = () => {
                       id="maxVideos"
                       value={options.maxVideos}
                       onChange={(e) => setOptions({ ...options, maxVideos: Number(e.target.value) })}
-                      className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-purple-500 focus:border-purple-500 transition-all"
                     >
                       <option value={25}>25 vídeos</option>
                       <option value={50}>50 vídeos</option>
@@ -204,7 +204,7 @@ const ChannelAnalysis = () => {
                       id="sortBy"
                       value={options.sortBy}
                       onChange={(e) => setOptions({ ...options, sortBy: e.target.value as 'date' | 'views' | 'engagement' })}
-                      className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-purple-500 focus:border-purple-500 transition-all"
                     >
                       <option value="views">Mais Visualizados</option>
                       <option value="date">Mais Recentes</option>
@@ -218,7 +218,7 @@ const ChannelAnalysis = () => {
                       id="includeShorts"
                       checked={options.includeShorts}
                       onChange={(e) => setOptions({ ...options, includeShorts: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition-all"
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 transition-all"
                     />
                     <label htmlFor="includeShorts" className="ml-2 block text-sm text-gray-700">
                       Incluir YouTube Shorts
@@ -240,7 +240,7 @@ const ChannelAnalysis = () => {
             <button
               type="submit"
               disabled={!currentKey || isLoading}
-              className="inline-flex items-center px-5 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center px-5 py-3 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <BarChart2 className="w-5 h-5 mr-2" />
               {isLoading ? 'Analisando...' : 'Analisar Canal'}
@@ -293,7 +293,7 @@ const ChannelAnalysis = () => {
                   onClick={() => setActiveTab('videos')}
                   className={`px-6 py-4 font-medium text-sm focus:outline-none transition-colors ${
                     activeTab === 'videos'
-                      ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                      ? 'bg-white text-purple-600 border-b-2 border-purple-600'
                       : 'bg-gray-50 text-gray-600 hover:text-gray-900'
                   }`}
                 >
@@ -322,7 +322,7 @@ const ChannelAnalysis = () => {
                       onClick={() => setDisplayMode('list')}
                       className={`inline-flex items-center px-4 py-2 text-sm rounded-lg transition-all ${
                         displayMode === 'list' 
-                          ? 'bg-blue-100 text-blue-700 font-medium' 
+                          ? 'bg-purple-100 text-purple-700 font-medium' 
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
@@ -333,7 +333,7 @@ const ChannelAnalysis = () => {
                       onClick={() => setDisplayMode('gallery')}
                       className={`inline-flex items-center px-4 py-2 text-sm rounded-lg transition-all ${
                         displayMode === 'gallery' 
-                          ? 'bg-blue-100 text-blue-700 font-medium' 
+                          ? 'bg-purple-100 text-purple-700 font-medium' 
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >

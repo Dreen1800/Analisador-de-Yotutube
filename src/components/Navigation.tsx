@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { Menu, X, Youtube, LayoutDashboard, LineChart, Key, LogOut, User, ChevronDown, Sparkles } from 'lucide-react';
+import { Menu, X, LayoutDashboard, LineChart, Key, LogOut, User, ChevronDown, Sparkles } from 'lucide-react';
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -50,10 +50,11 @@ const Navigation = () => {
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link to="/dashboard" className="flex items-center group">
-                <div className="bg-blue-600 text-white p-2 rounded-lg transition-all duration-300 group-hover:bg-blue-700">
-                  <Youtube className="h-6 w-6" />
-                </div>
-                <span className="ml-2 text-xl font-bold text-gray-900">Analisador</span>
+                <img 
+                  src="https://archive.org/download/meu_20250506/MEU.png" 
+                  alt="Nexia Logo" 
+                  className="h-8 mr-2 transition-all duration-300"
+                />
               </Link>
             </div>
             
@@ -69,7 +70,7 @@ const Navigation = () => {
                     to={item.href}
                     className={`inline-flex items-center px-2 pt-1 text-sm font-medium transition-colors duration-200 ${
                       isActive
-                        ? 'border-b-2 border-blue-500 text-blue-700'
+                        ? 'border-b-2 border-purple-500 text-purple-700'
                         : 'border-b-2 border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
                     }`}
                   >
@@ -89,8 +90,8 @@ const Navigation = () => {
                 className="flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 focus:outline-none transition-colors duration-200 rounded-lg px-3 py-2 hover:bg-gray-100"
               >
                 <div className="flex items-center">
-                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center mr-2">
-                    <User className="h-5 w-5 text-blue-600" />
+                  <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center mr-2">
+                    <User className="h-5 w-5 text-purple-600" />
                   </div>
                   <span className="mr-1">{user?.email?.split('@')[0] || 'Usuário'}</span>
                   <ChevronDown className="h-4 w-4" />
@@ -123,7 +124,7 @@ const Navigation = () => {
             <button
               type="button"
               onClick={toggleMenu}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 transition-colors"
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-purple-500 transition-colors"
             >
               <span className="sr-only">{isOpen ? 'Fechar menu principal' : 'Abrir menu principal'}</span>
               {isOpen ? (
@@ -151,7 +152,7 @@ const Navigation = () => {
                   onClick={closeMenu}
                   className={`block pl-4 pr-4 py-3 border-l-4 text-base font-medium transition-colors ${
                     isActive
-                      ? 'border-blue-500 text-blue-700 bg-blue-50'
+                      ? 'border-purple-500 text-purple-700 bg-purple-50'
                       : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
                   }`}
                 >
@@ -166,8 +167,8 @@ const Navigation = () => {
             {/* Informações do usuário no menu móvel */}
             <div className="mt-4 pt-4 border-t border-gray-200">
               <div className="flex items-center px-4 py-2">
-                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                  <User className="h-6 w-6 text-blue-600" />
+                <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center mr-3">
+                  <User className="h-6 w-6 text-purple-600" />
                 </div>
                 <div className="text-sm">
                   <p className="font-medium text-gray-800">{user?.email?.split('@')[0] || 'Usuário'}</p>

@@ -204,7 +204,7 @@ const EngagementChart = ({ videos }: EngagementChartProps) => {
     <div className="h-full">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center">
-          <TrendingUp className="w-5 h-5 text-indigo-600 mr-2" />
+          <TrendingUp className="w-5 h-5 text-purple-600 mr-2" />
           <h3 className="text-lg font-semibold text-gray-800">Top 10 Vídeos por Engajamento</h3>
         </div>
         <button 
@@ -217,7 +217,7 @@ const EngagementChart = ({ videos }: EngagementChartProps) => {
       </div>
       
       {showInfo && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-800">
+        <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-100 text-sm text-purple-800">
           <p>
             A taxa de engajamento é calculada pela soma de curtidas e comentários dividida pelo número de visualizações.
             Quanto maior a taxa, mais os espectadores interagem com o conteúdo.
@@ -225,9 +225,9 @@ const EngagementChart = ({ videos }: EngagementChartProps) => {
         </div>
       )}
       
-      <div className="mb-4 flex justify-between items-center p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+      <div className="mb-4 flex justify-between items-center p-3 bg-purple-50 rounded-lg border border-purple-100">
         <span className="text-sm font-medium text-gray-600">Engajamento médio do canal:</span>
-        <span className="text-lg font-bold text-indigo-700">{calculateAverageEngagement()}%</span>
+        <span className="text-lg font-bold text-purple-700">{calculateAverageEngagement()}%</span>
       </div>
       
       <div className="h-80 mt-5">

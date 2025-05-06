@@ -32,7 +32,7 @@ const Dashboard = () => {
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-            <Youtube className="w-8 h-8 text-blue-600 mr-3" />
+            <Youtube className="w-8 h-8 text-purple-600 mr-3" />
             Dashboard
           </h1>
           <p className="text-gray-600 mt-1">
@@ -43,7 +43,7 @@ const Dashboard = () => {
         <button 
           onClick={handleRefresh} 
           disabled={isRefreshing || isLoading}
-          className="mt-4 md:mt-0 inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-50"
+          className="mt-4 md:mt-0 inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all disabled:opacity-50"
         >
           {isRefreshing ? (
             <>
@@ -83,7 +83,7 @@ const Dashboard = () => {
       <div className="mb-8 bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
         <div className="p-5 border-b border-gray-100 bg-gray-50">
           <h2 className="text-xl font-semibold text-gray-800 flex items-center">
-            <TrendingUp className="w-5 h-5 text-blue-600 mr-2" />
+            <TrendingUp className="w-5 h-5 text-purple-600 mr-2" />
             Visão Geral de Análises
           </h2>
         </div>
@@ -100,7 +100,7 @@ const Dashboard = () => {
           </div>
           <input
             type="text"
-            className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full pl-10 p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+            className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full pl-10 p-3 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm"
             placeholder="Pesquisar canais..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -109,7 +109,7 @@ const Dashboard = () => {
         
         <Link 
           to="/channel-analysis"
-          className="inline-flex items-center px-5 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 w-full md:w-auto justify-center shadow-md"
+          className="inline-flex items-center px-5 py-3 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200 w-full md:w-auto justify-center shadow-md"
         >
           <Plus className="w-5 h-5 mr-2" />
           Analisar Novo Canal
@@ -120,7 +120,7 @@ const Dashboard = () => {
       {isLoading ? (
         <div className="flex justify-center items-center h-64 bg-white rounded-xl shadow-lg p-8 border border-gray-100">
           <div className="flex flex-col items-center">
-            <div className="w-12 h-12 border-4 border-t-blue-600 border-blue-200 rounded-full animate-spin mb-4"></div>
+            <div className="w-12 h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mb-4"></div>
             <p className="text-gray-600">Carregando seus canais...</p>
           </div>
         </div>
@@ -141,15 +141,15 @@ const Dashboard = () => {
           </p>
           <button
             onClick={() => setSearchQuery('')}
-            className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
           >
             Limpar Pesquisa
           </button>
         </div>
       ) : (
         <div className="text-center py-16 bg-white rounded-xl shadow-lg border border-gray-100">
-          <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-blue-50 mb-6">
-            <Youtube className="h-10 w-10 text-blue-600" />
+          <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-purple-50 mb-6">
+            <Youtube className="h-10 w-10 text-purple-600" />
           </div>
           <h3 className="text-xl font-medium text-gray-900 mb-3">Nenhum canal analisado ainda</h3>
           <p className="text-gray-600 mb-6 max-w-md mx-auto">
@@ -157,7 +157,7 @@ const Dashboard = () => {
           </p>
           <Link 
             to="/channel-analysis"
-            className="inline-flex items-center px-5 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none transition-all duration-200 shadow-md"
+            className="inline-flex items-center px-5 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 focus:ring-purple-500 focus:ring-offset-2 focus:outline-none transition-all duration-200 shadow-md"
           >
             <Plus className="w-5 h-5 mr-2" />
             Analisar Seu Primeiro Canal

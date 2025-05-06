@@ -287,7 +287,7 @@ const ViewsDurationChart = ({ videos }: ViewsDurationChartProps) => {
     const strength = getCorrelationStrength();
     if (strength === 'Forte') return 'text-green-600';
     if (strength === 'Moderada') return 'text-amber-600';
-    if (strength === 'Fraca') return 'text-blue-600';
+    if (strength === 'Fraca') return 'text-purple-600';
     return 'text-gray-600';
   };
 
@@ -295,7 +295,7 @@ const ViewsDurationChart = ({ videos }: ViewsDurationChartProps) => {
     <div className="h-full">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center">
-          <TrendingUp className="w-5 h-5 text-indigo-600 mr-2" />
+          <TrendingUp className="w-5 h-5 text-purple-600 mr-2" />
           <h3 className="text-lg font-semibold text-gray-800">Correlação Visualizações x Duração</h3>
         </div>
         <button 
@@ -308,7 +308,7 @@ const ViewsDurationChart = ({ videos }: ViewsDurationChartProps) => {
       </div>
       
       {showInfo && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-800">
+        <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-100 text-sm text-purple-800">
           <p>
             Este gráfico mostra a relação entre a duração de cada vídeo e suas visualizações.
             A linha de tendência indica se vídeos mais longos ou mais curtos tendem a obter mais visualizações.
@@ -317,8 +317,8 @@ const ViewsDurationChart = ({ videos }: ViewsDurationChartProps) => {
       )}
       
       <div className="flex flex-wrap gap-4 mb-4">
-        <div className="flex items-center p-3 bg-indigo-50 rounded-lg border border-indigo-100">
-          <Eye className="w-4 h-4 text-indigo-600 mr-2" />
+        <div className="flex items-center p-3 bg-purple-50 rounded-lg border border-purple-100">
+          <Eye className="w-4 h-4 text-purple-600 mr-2" />
           <div>
             <div className="text-xs text-gray-600">Média de visualizações</div>
             <div className="font-semibold">
@@ -329,8 +329,8 @@ const ViewsDurationChart = ({ videos }: ViewsDurationChartProps) => {
           </div>
         </div>
         
-        <div className="flex items-center p-3 bg-indigo-50 rounded-lg border border-indigo-100">
-          <Clock className="w-4 h-4 text-indigo-600 mr-2" />
+        <div className="flex items-center p-3 bg-purple-50 rounded-lg border border-purple-100">
+          <Clock className="w-4 h-4 text-purple-600 mr-2" />
           <div>
             <div className="text-xs text-gray-600">Duração média</div>
             <div className="font-semibold">
@@ -341,7 +341,7 @@ const ViewsDurationChart = ({ videos }: ViewsDurationChartProps) => {
           </div>
         </div>
         
-        <div className="flex items-center p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+        <div className="flex items-center p-3 bg-purple-50 rounded-lg border border-purple-100">
           <div>
             <div className="text-xs text-gray-600">Correlação</div>
             <div className={`font-semibold ${getCorrelationColor()}`}>

@@ -89,16 +89,16 @@ const VideoList = ({ videos }: VideoListProps) => {
       <th 
         onClick={() => handleSort(field)}
         className={`px-6 py-3.5 cursor-pointer transition-colors text-left text-xs font-medium uppercase tracking-wider ${
-          isActive ? 'bg-blue-50' : 'hover:bg-gray-50'
+          isActive ? 'bg-purple-50' : 'hover:bg-gray-50'
         }`}
       >
         <div className="flex items-center">
-          <div className={`${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
+          <div className={`${isActive ? 'text-purple-600' : 'text-gray-500'}`}>
             {icon}
           </div>
-          <span className={`ml-1.5 ${isActive ? 'text-blue-700' : 'text-gray-500'}`}>{label}</span>
+          <span className={`ml-1.5 ${isActive ? 'text-purple-700' : 'text-gray-500'}`}>{label}</span>
           {isActive && (
-            <span className="ml-1.5 text-blue-600">
+            <span className="ml-1.5 text-purple-600">
               {sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
             </span>
           )}
@@ -164,7 +164,7 @@ const VideoList = ({ videos }: VideoListProps) => {
                       href={`https://www.youtube.com/watch?v=${video.video_id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm font-medium text-gray-900 hover:text-blue-600 line-clamp-2 transition-colors"
+                      className="text-sm font-medium text-gray-900 hover:text-purple-600 line-clamp-2 transition-colors"
                     >
                       {video.title}
                     </a>
@@ -194,7 +194,7 @@ const VideoList = ({ videos }: VideoListProps) => {
                   <div className="mr-2">
                     <div className="w-16 h-1.5 bg-gray-200 rounded-full">
                       <div 
-                        className="h-1.5 bg-blue-600 rounded-full" 
+                        className="h-1.5 bg-purple-600 rounded-full" 
                         style={{ width: `${Math.min(100, video.engagement_rate * 100 * 5)}%` }}
                       ></div>
                     </div>

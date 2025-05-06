@@ -2,17 +2,16 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuthStore } from '../stores/authStore';
-import { Youtube } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { setUser } = useAuthStore();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -28,26 +27,28 @@ const Login = () => {
       setUser(data.user);
       navigate('/dashboard');
     } catch (err) {
-      setError((err as Error).message || 'Falha ao fazer login');
+      setError(err.message || 'Falha ao fazer login');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-purple-100 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
         <div className="text-center">
           <div className="flex justify-center">
-            <div className="bg-blue-600 rounded-full p-3 shadow-md">
-              <Youtube className="h-8 w-8 text-white" />
-            </div>
+            <img 
+              src="https://archive.org/download/meu_20250506/MEU.png" 
+              alt="Nexia Logo" 
+              className="h-12"
+            />
           </div>
           <h2 className="mt-5 text-3xl font-extrabold text-gray-900">
-            Plataforma de Análise do YouTube
+            Plataforma de Análise
           </h2>
           <p className="mt-2 text-base text-gray-600">
-            Entre na sua conta para analisar canais do YouTube
+            Entre na sua conta para analisar canais
           </p>
         </div>
         
@@ -65,7 +66,7 @@ const Login = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ease-in-out"
+                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 ease-in-out"
                 placeholder="Seu endereço de e-mail"
               />
             </div>
@@ -81,7 +82,7 @@ const Login = () => {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ease-in-out"
+                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 ease-in-out"
                 placeholder="Sua senha"
               />
             </div>
@@ -100,7 +101,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70 transition-colors duration-200 ease-in-out shadow-md"
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-70 transition-colors duration-200 ease-in-out shadow-md"
             >
               {loading ? (
                 <span className="flex items-center">
@@ -119,13 +120,11 @@ const Login = () => {
           <div className="text-base text-center mt-6">
             <p>
               Não tem uma conta?{" "}
-              <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200">
+              <Link to="/register" className="font-medium text-purple-600 hover:text-purple-500 transition-colors duration-200">
                 Registre-se aqui
               </Link>
             </p>
           </div>
-          
-          {/* Seção de login social removida */}
         </form>
       </div>
     </div>

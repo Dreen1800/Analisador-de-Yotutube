@@ -99,7 +99,7 @@ const ApiKeys = () => {
             </div>
             <button 
               onClick={() => setShowAddForm(!showAddForm)} 
-              className="mt-3 md:mt-0 inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-md"
+              className="mt-3 md:mt-0 inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200 shadow-md"
             >
               {showAddForm ? (
                 <>
@@ -116,15 +116,15 @@ const ApiKeys = () => {
           </div>
           
           {showHelp && (
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100 flex items-start">
-              <AlertCircle className="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-800">
+            <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-100 flex items-start">
+              <AlertCircle className="w-5 h-5 text-purple-600 mr-3 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-purple-800">
                 <p className="font-medium mb-1">O que são chaves de API do YouTube?</p>
                 <p>Uma chave da API YouTube Data é necessária para analisar canais. Cada chave tem um limite de cota do Google (geralmente 10.000 unidades por dia).</p>
               </div>
               <button 
                 onClick={() => setShowHelp(false)}
-                className="ml-auto text-blue-600 hover:text-blue-800"
+                className="ml-auto text-purple-600 hover:text-purple-800"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -140,7 +140,7 @@ const ApiKeys = () => {
                 <input
                   type="text"
                   id="keyName"
-                  className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-3 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
                   placeholder="ex: Minha Chave YouTube API"
                   value={newKeyName}
                   onChange={(e) => setNewKeyName(e.target.value)}
@@ -156,7 +156,7 @@ const ApiKeys = () => {
                   <input
                     type={showKeyValue['new'] ? 'text' : 'password'} 
                     id="keyValue"
-                    className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-3 pr-10 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
                     placeholder="Sua chave da API YouTube Data"
                     value={newKeyValue}
                     onChange={(e) => setNewKeyValue(e.target.value)}
@@ -189,7 +189,7 @@ const ApiKeys = () => {
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-sm"
+                  className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors shadow-sm"
                 >
                   <Plus className="w-4 h-4 mr-1" />
                   Adicionar Chave
@@ -202,7 +202,7 @@ const ApiKeys = () => {
         {isLoading ? (
           <div className="flex justify-center items-center h-48">
             <div className="flex flex-col items-center">
-              <div className="w-10 h-10 border-4 border-t-blue-600 border-blue-200 rounded-full animate-spin"></div>
+              <div className="w-10 h-10 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin"></div>
               <p className="mt-4 text-gray-600 text-sm">Carregando chaves...</p>
             </div>
           </div>
@@ -223,9 +223,9 @@ const ApiKeys = () => {
             <p className="mt-1 text-gray-500 max-w-md mx-auto">
               Você precisa de uma chave de API do YouTube para analisar canais.
             </p>
-            <button 
-              onClick={() => setShowAddForm(true)} 
-              className="mt-5 inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-md"
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="mt-5 inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors shadow-md"
             >
               <Plus className="w-5 h-5 mr-2" />
               Adicionar Primeira Chave
@@ -299,7 +299,7 @@ const ApiKeys = () => {
                         {!key.is_active && (
                           <button
                             onClick={() => handleSetActive(key.id)}
-                            className="text-blue-600 hover:text-blue-800 transition-colors inline-flex items-center"
+                            className="text-purple-600 hover:text-purple-800 transition-colors inline-flex items-center"
                             title="Definir como chave ativa"
                           >
                             <Check className="w-4 h-4 mr-1" />
@@ -330,7 +330,7 @@ const ApiKeys = () => {
       
       <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 shadow-sm">
         <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
-          <Info className="w-5 h-5 mr-2 text-blue-600" />
+          <Info className="w-5 h-5 mr-2 text-purple-600" />
           Sobre Chaves de API do YouTube
         </h3>
         <div className="text-sm text-gray-600 space-y-3">
@@ -342,15 +342,15 @@ const ApiKeys = () => {
             Para criar uma chave API:
           </p>
           <ol className="list-decimal list-inside space-y-2 ml-2">
-            <li>Acesse o <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">Console do Google Cloud</a></li>
+            <li>Acesse o <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline font-medium">Console do Google Cloud</a></li>
             <li>Crie um novo projeto</li>
             <li>Ative a API YouTube Data v3</li>
             <li>Crie credenciais para obter sua chave API</li>
             <li>Copie e cole sua chave aqui</li>
           </ol>
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-start">
-            <AlertCircle className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-blue-800">
+          <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-100 flex items-start">
+            <AlertCircle className="w-5 h-5 text-purple-600 mr-2 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-purple-800">
               As chaves de API têm limites diários. Se você exceder o limite, precisará esperar até o próximo ciclo de 24 horas ou usar outra chave.
             </p>
           </div>

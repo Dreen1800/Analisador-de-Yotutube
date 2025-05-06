@@ -680,7 +680,7 @@ const AiChannelAnalyzer = () => {
               <button
                 onClick={generateAiAnalysis}
                 disabled={isGeneratingAnalysis || competitors.length === 0}
-                className="w-full px-5 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-md"
+                className="w-full px-5 py-4 bg-gradient-to-r from-purple-600 to-purple-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-md"
               >
                 {isGeneratingAnalysis ? (
                   <>
@@ -703,7 +703,7 @@ const AiChannelAnalyzer = () => {
           
           {/* Analysis Results */}
           {aiAnalysis && (
-            <div className="p-6 bg-gradient-to-r from-purple-50 to-indigo-50">
+            <div className="p-6 bg-gradient-to-r from-purple-50 to-purple-50">
               <div className="mb-4">
                 <h3 className="text-lg font-medium text-gray-800 mb-1 flex items-center">
                   <Sparkles className="w-5 h-5 text-purple-600 mr-2" />
@@ -735,12 +735,12 @@ const AiChannelAnalyzer = () => {
                   </ul>
                 </div>
                 
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-indigo-100">
-                  <h4 className="font-medium text-indigo-700 mb-3">Padrões de Conteúdo</h4>
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-purple-100">
+                  <h4 className="font-medium text-purple-700 mb-3">Padrões de Conteúdo</h4>
                   <ul className="space-y-2">
                     {aiAnalysis.analysis.patterns.map((pattern, index) => (
                       <li key={index} className="flex items-start">
-                        <span className="inline-flex items-center justify-center bg-indigo-100 text-indigo-800 w-6 h-6 rounded-full text-xs font-medium mr-2 mt-0.5">
+                        <span className="inline-flex items-center justify-center bg-purple-100 text-indipurplego-800 w-6 h-6 rounded-full text-xs font-medium mr-2 mt-0.5">
                           {index + 1}
                         </span>
                         <span className="text-gray-700">{pattern}</span>
@@ -749,12 +749,12 @@ const AiChannelAnalyzer = () => {
                   </ul>
                 </div>
                 
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-blue-100">
-                  <h4 className="font-medium text-blue-700 mb-3">Nichos com Potencial Viral</h4>
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-purple-100">
+                  <h4 className="font-medium text-purple-700 mb-3">Nichos com Potencial Viral</h4>
                   <ul className="space-y-2">
                     {aiAnalysis.analysis.viralPotential.map((potential, index) => (
                       <li key={index} className="flex items-start">
-                        <span className="inline-flex items-center justify-center bg-blue-100 text-blue-800 w-6 h-6 rounded-full text-xs font-medium mr-2 mt-0.5">
+                        <span className="inline-flex items-center justify-center bg-purple-100 text-purple-800 w-6 h-6 rounded-full text-xs font-medium mr-2 mt-0.5">
                           {index + 1}
                         </span>
                         <span className="text-gray-700">{potential}</span>
@@ -772,7 +772,7 @@ const AiChannelAnalyzer = () => {
                           <span className="inline-flex items-center justify-center bg-green-100 text-green-800 w-6 h-6 rounded-full text-xs font-medium mr-2">
                             {index + 1}
                           </span>
-                          <h5 className="font-medium text-green-800">Video Idea</h5>
+                          <h5 className="font-medium text-green-800">Ideia de video</h5>
                         </div>
                         <p className="text-gray-700 text-sm">{idea}</p>
                       </div>

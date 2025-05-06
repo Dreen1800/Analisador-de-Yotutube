@@ -226,7 +226,7 @@ const ExportOptions = ({ videos, channelTitle }: ExportOptionsProps) => {
   return (
     <div>
       <div className="flex items-center mb-4">
-        <Download className="w-5 h-5 text-blue-600 mr-2" />
+        <Download className="w-5 h-5 text-purple-600 mr-2" />
         <h2 className="text-xl font-semibold text-gray-800">Exportar Análise</h2>
       </div>
       
