@@ -9,11 +9,11 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row items-center justify-between">
           <div className="flex items-center mb-4 md:mb-0">
             <img 
-              src="https://archive.org/download/meu_20250506/MEU.png" 
+              src="https://vqptszujydcaedjglhdo.supabase.co/storage/v1/object/public/storage//Logo%202.webp" 
               alt="Nexia Logo" 
               className="h-6 mr-2"
             />
-            <span className="text-gray-800 font-medium">Analisador de Youtube</span>
+            <span className="text-gray-800 font-medium">NexIA Content</span>
           </div>
           
           <div className="flex flex-col md:flex-row items-center text-sm text-gray-600">

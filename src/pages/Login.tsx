@@ -39,17 +39,11 @@ const Login = () => {
         <div className="text-center">
           <div className="flex justify-center">
             <img 
-              src="https://archive.org/download/meu_20250506/MEU.png" 
+              src="https://vqptszujydcaedjglhdo.supabase.co/storage/v1/object/public/storage//Logo.webp" 
               alt="Nexia Logo" 
-              className="h-12"
+              className="h-20"
             />
           </div>
-          <h2 className="mt-5 text-3xl font-extrabold text-gray-900">
-            Plataforma de Análise
-          </h2>
-          <p className="mt-2 text-base text-gray-600">
-            Entre na sua conta para analisar canais
-          </p>
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
