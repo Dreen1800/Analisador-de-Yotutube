@@ -480,7 +480,7 @@ const AiChannelAnalyzer = () => {
           Analisador de canais AI
         </h1>
         <p className="text-gray-600 mt-1">
-        Utilizar a IA para analisar a concorrência e gerar ideias de conteúdos com potencial viral
+          Utilizar a IA para analisar a concorrência e gerar ideias de conteúdos com potencial viral
         </p>
       </div>
 
