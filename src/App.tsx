@@ -6,9 +6,8 @@ import { useAuthStore } from './stores/authStore';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import ChannelAnalysis from './pages/ChannelAnalysis';
+import Home from './pages/Home'; // Nova importação
 import AiChannelAnalyzer from './pages/AiChannelAnalyzer';
-import ApiKeys from './pages/ApiKeys';
 import NotFound from './pages/NotFound';
 
 // Components
@@ -26,7 +25,7 @@ function App() {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user || null);
       setIsLoading(false);
-      
+
       // Setup auth listener
       supabase.auth.onAuthStateChange((_event, session) => {
         setUser(session?.user || null);
@@ -46,29 +45,28 @@ function App() {
 
   // Pages that don't need the navigation bar
   const authPages = ['/login', '/register'];
-  const showNavigation = !authPages.includes(location.pathname);
+  const showNavigation = !authPages.includes(location.pathname) && user;
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
-      {showNavigation && user && <Navigation />}
-      
-      <main className="flex-grow">
+      {showNavigation && <Navigation />}
+
+      <main className={`flex-grow ${showNavigation ? 'pt-20' : ''}`}>
         <Routes>
-          <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
-          <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
-          
+          <Route path="/login" element={user ? <Navigate to="/home" /> : <Login />} />
+          <Route path="/register" element={user ? <Navigate to="/home" /> : <Register />} />
+
           {/* Protected Routes */}
+          <Route path="/home" element={!user ? <Navigate to="/login" /> : <Home />} /> {/* Nova rota */}
           <Route path="/dashboard" element={!user ? <Navigate to="/login" /> : <Dashboard />} />
-          <Route path="/channel-analysis/:id?" element={!user ? <Navigate to="/login" /> : <ChannelAnalysis />} />
           <Route path="/ai-analyzer" element={!user ? <Navigate to="/login" /> : <AiChannelAnalyzer />} />
-          <Route path="/api-keys" element={!user ? <Navigate to="/login" /> : <ApiKeys />} />
-          
-          <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
+
+          <Route path="/" element={<Navigate to={user ? "/home" : "/login"} />} /> {/* Alterado para /home */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      
-      {showNavigation && user && <Footer />}
+
+      {showNavigation && <Footer />}
     </div>
   );
 }

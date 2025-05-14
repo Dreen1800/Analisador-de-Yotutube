@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApiKeyStore } from '../stores/apiKeyStore';
+import { useOpenAIKeyStore } from '../stores/openaiKeyStore';
+import { useChannelStore } from '../stores/channelStore';
 import { supabase } from '../lib/supabaseClient';
-import { 
-  Sparkles, 
-  Brain, 
-  AlertCircle, 
-  Info, 
-  Loader, 
-  PlusCircle, 
-  Trash2, 
+import {
+  Sparkles,
+  Brain,
+  AlertCircle,
+  Info,
+  Loader,
+  PlusCircle,
+  Trash2,
   RefreshCw
 } from 'lucide-react';
 import axios from 'axios';
@@ -22,6 +24,7 @@ interface Channel {
   subscriber_count: number;
   video_count: number;
   view_count: number;
+  is_main?: boolean;
 }
 
 interface Competitor {
@@ -53,49 +56,60 @@ const AiChannelAnalyzer = () => {
   const [isGeneratingAnalysis, setIsGeneratingAnalysis] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showApiKeyError, setShowApiKeyError] = useState(false);
-  const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [aiAnalysis, setAiAnalysis] = useState<AiAnalysisResult | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [videoData, setVideoData] = useState<any[]>([]);
+  const [analyzeAllChannels, setAnalyzeAllChannels] = useState(true);
   const { apiKeys } = useApiKeyStore();
+  const { openaiKeys, currentKey: currentOpenAIKey } = useOpenAIKeyStore();
+  const { getMainChannel } = useChannelStore();
   const navigate = useNavigate();
 
-  // Fetch user channels
+  // Fetch user channels and set main channel
   useEffect(() => {
-    fetchUserChannels();
+    fetchMainChannel();
   }, []);
 
-  const fetchUserChannels = async () => {
+  const fetchMainChannel = async () => {
     setIsLoadingChannels(true);
     try {
+      // Get all channels first to populate userChannels state
       const { data, error } = await supabase
         .from('channels')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      
+
       setUserChannels(data || []);
+
+      // Get main channel
+      const mainChannel = await getMainChannel();
+
+      if (mainChannel) {
+        setSelectedChannel(mainChannel);
+        // Fetch data for this channel immediately
+        fetchCompetitors(mainChannel.channel_id);
+        fetchExistingAnalysis(mainChannel.channel_id);
+        fetchVideoData(mainChannel.channel_id);
+      } else if (data && data.length > 0) {
+        // If no main channel but channels exist, use the first one
+        setSelectedChannel(data[0]);
+        // Fetch data for this channel immediately
+        fetchCompetitors(data[0].channel_id);
+        fetchExistingAnalysis(data[0].channel_id);
+        fetchVideoData(data[0].channel_id);
+      } else {
+        // No channels at all
+        setError('Você precisa adicionar um canal primeiro para usar o analisador AI.');
+      }
     } catch (err) {
-      console.error('Error fetching channels:', err);
-      setError('Failed to load your channels. Please try again.');
+      console.error('Error fetching main channel:', err);
+      setError('Failed to load your main channel. Please try again.');
     } finally {
       setIsLoadingChannels(false);
     }
   };
-
-  // Fetch competitors when channel is selected
-  useEffect(() => {
-    if (selectedChannel) {
-      fetchCompetitors(selectedChannel.channel_id);
-      fetchExistingAnalysis(selectedChannel.channel_id);
-      fetchVideoData(selectedChannel.channel_id);
-    } else {
-      setCompetitors([]);
-      setAiAnalysis(null);
-      setVideoData([]);
-    }
-  }, [selectedChannel]);
 
   const fetchCompetitors = async (channelId: string) => {
     try {
@@ -103,9 +117,9 @@ const AiChannelAnalyzer = () => {
         .from('competitors')
         .select('*')
         .eq('parent_channel_id', channelId);
-      
+
       if (error) throw error;
-      
+
       setCompetitors(data || []);
     } catch (err) {
       console.error('Error fetching competitors:', err);
@@ -121,7 +135,7 @@ const AiChannelAnalyzer = () => {
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-      
+
       if (error) {
         if (error.code !== 'PGRST116') { // No rows returned is not a real error
           throw error;
@@ -143,9 +157,9 @@ const AiChannelAnalyzer = () => {
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-      
+
       if (error) throw error;
-      
+
       setVideoData(data.videos || []);
     } catch (err) {
       console.error('Error fetching video data:', err);
@@ -156,22 +170,22 @@ const AiChannelAnalyzer = () => {
   const handleAddCompetitor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!competitorUrl || !selectedChannel) return;
-    
+
     setIsAddingCompetitor(true);
     setError(null);
-    
+
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
-      
+
       // Get the first YouTube API key
       if (apiKeys.length === 0) {
         throw new Error('No YouTube API key found');
       }
-      
+
       const youtubeApiKey = apiKeys[0].key;
-      
+
       // Extract channel ID or handle from URL
       const patterns = {
         channel: /youtube\.com\/channel\/([a-zA-Z0-9_-]+)/i,
@@ -180,10 +194,10 @@ const AiChannelAnalyzer = () => {
         user: /youtube\.com\/user\/([^\/\s?&]+)/i,
         handleOnly: /@([^\/\s?&]+)/i
       };
-      
+
       let competitor_id = '';
       let searchTerm = '';
-      
+
       // Try to match direct channel ID first
       const channelMatch = competitorUrl.match(patterns.channel);
       if (channelMatch) {
@@ -200,7 +214,7 @@ const AiChannelAnalyzer = () => {
         // Assume it's a search term if no pattern matches
         searchTerm = competitorUrl;
       }
-      
+
       // If we have a direct ID, use it
       if (!competitor_id && searchTerm) {
         // Otherwise, search for the channel
@@ -213,14 +227,14 @@ const AiChannelAnalyzer = () => {
             key: youtubeApiKey
           }
         });
-        
+
         if (response.data.items?.length > 0) {
           competitor_id = response.data.items[0].id.channelId;
         } else {
           throw new Error('Channel not found');
         }
       }
-      
+
       // Get channel details
       const channelResponse = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
         params: {
@@ -229,13 +243,13 @@ const AiChannelAnalyzer = () => {
           key: youtubeApiKey
         }
       });
-      
+
       if (!channelResponse.data.items || channelResponse.data.items.length === 0) {
         throw new Error('Channel details not found');
       }
-      
+
       const channelDetails = channelResponse.data.items[0];
-      
+
       // Add the competitor to the database
       const { data, error } = await supabase
         .from('competitors')
@@ -248,9 +262,9 @@ const AiChannelAnalyzer = () => {
           }
         ])
         .select();
-      
+
       if (error) throw error;
-      
+
       // Update the competitors list
       setCompetitors([...(data as Competitor[]), ...competitors]);
       setCompetitorUrl('');
@@ -267,9 +281,9 @@ const AiChannelAnalyzer = () => {
         .from('competitors')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
-      
+
       // Update the competitors list
       setCompetitors(competitors.filter(comp => comp.id !== id));
     } catch (err) {
@@ -278,26 +292,57 @@ const AiChannelAnalyzer = () => {
   };
 
   const generateAiAnalysis = async () => {
+    // Use OpenAI key from store if available, otherwise use the one from the input
+    const openaiApiKey = currentOpenAIKey?.key || '';
+
     if (!openaiApiKey) {
       setShowApiKeyError(true);
       return;
     }
-    
+
     if (!selectedChannel) {
-      setError('Please select a channel first');
+      setError('Nenhum canal principal encontrado. Adicione um canal primeiro.');
       return;
     }
-    
+
     setIsGeneratingAnalysis(true);
     setError(null);
     setShowApiKeyError(false);
-    
+
     try {
+      // Get videos from main channel
+      let ownChannelData = {
+        videos: videoData.map(video => ({
+          title: video.title,
+          viewCount: video.view_count,
+          likeCount: video.like_count,
+          commentCount: video.comment_count
+        }))
+      };
+
+      // Get list of channels to analyze
+      let channelsToAnalyze = [];
+
+      if (analyzeAllChannels) {
+        // Use all channels as competitors except the selected one
+        channelsToAnalyze = userChannels
+          .filter(channel => channel.channel_id !== selectedChannel.channel_id)
+          .map(channel => ({
+            id: channel.id,
+            channel_id: channel.channel_id,
+            title: channel.title,
+            parent_channel_id: selectedChannel.channel_id
+          }));
+      }
+
+      // Merge with manually added competitors
+      const allCompetitors = [...channelsToAnalyze, ...competitors];
+
       // Get competitor video data
       const competitorVideos = await Promise.all(
-        competitors.map(async (competitor) => {
+        allCompetitors.map(async (competitor) => {
           const youtubeApiKey = apiKeys[0].key;
-          
+
           // Get videos from competitor
           const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
             params: {
@@ -309,9 +354,9 @@ const AiChannelAnalyzer = () => {
               key: youtubeApiKey
             }
           });
-          
+
           const videoIds = response.data.items.map((item: any) => item.id.videoId);
-          
+
           // Get detailed video info
           const videoDetailsResponse = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
             params: {
@@ -320,7 +365,7 @@ const AiChannelAnalyzer = () => {
               key: youtubeApiKey
             }
           });
-          
+
           return {
             channelTitle: competitor.title,
             videos: videoDetailsResponse.data.items.map((item: any) => ({
@@ -333,23 +378,13 @@ const AiChannelAnalyzer = () => {
           };
         })
       );
-      
-      // Extract self channel data for comparison
-      const ownChannelData = {
-        videos: videoData.map(video => ({
-          title: video.title,
-          viewCount: video.view_count,
-          likeCount: video.like_count,
-          commentCount: video.comment_count
-        }))
-      };
-      
+
       // Format data for the OpenAI API request
       const promptData = {
         competitors: competitorVideos,
         ownChannel: ownChannelData
       };
-      
+
       // Call OpenAI API
       const openAiResponse = await axios.post(
         'https://api.openai.com/v1/chat/completions',
@@ -366,7 +401,7 @@ const AiChannelAnalyzer = () => {
             },
             {
               role: "system",
-              content: "Please provide your analysis in the following JSON format: { \"trends\": [list of 3-5 current trends observed in the most successful videos], \"patterns\": [3-5 content patterns or formats that work well], \"viralPotential\": [3-5 specific niches or topics with high viral potential], \"contentIdeas\": [5-8 concrete and detailed video ideas that have viral potential based on the analysis] }"
+              content: "Please provide your analysis in the following JSON format: { \"trends\": [list of 3-5 current trends observed in the most successful videos], \"patterns\": [3-5 content patterns or formats that work well], \"viralPotential\": [3-5 specific niches or topics with high viral potential], \"contentIdeas\": [5-8 concrete and detailed video ideas that have viral potential based on the analysis] o conteudo deve sair em pt-br }"
             }
           ],
           temperature: 0.7,
@@ -379,12 +414,12 @@ const AiChannelAnalyzer = () => {
           }
         }
       );
-      
+
       // Parse and validate the response
       let analysisResult;
       try {
         const content = openAiResponse.data.choices[0].message.content;
-        
+
         // Try to extract the JSON from the response
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
@@ -392,13 +427,13 @@ const AiChannelAnalyzer = () => {
         } else {
           throw new Error('JSON format not found in response');
         }
-        
+
         // Check if all required fields exist
-        if (!analysisResult.trends || !analysisResult.patterns || 
-            !analysisResult.viralPotential || !analysisResult.contentIdeas) {
+        if (!analysisResult.trends || !analysisResult.patterns ||
+          !analysisResult.viralPotential || !analysisResult.contentIdeas) {
           throw new Error('Incomplete AI response');
         }
-        
+
         // Ensure all fields are arrays
         analysisResult.trends = Array.isArray(analysisResult.trends) ? analysisResult.trends : [];
         analysisResult.patterns = Array.isArray(analysisResult.patterns) ? analysisResult.patterns : [];
@@ -408,11 +443,11 @@ const AiChannelAnalyzer = () => {
         console.error('Error processing response:', err);
         throw new Error('Error processing AI response');
       }
-      
+
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
-      
+
       // Save the analysis to the database
       const { data, error } = await supabase
         .from('ai_analyses')
@@ -424,9 +459,9 @@ const AiChannelAnalyzer = () => {
           }
         ])
         .select();
-      
+
       if (error) throw error;
-      
+
       // Update the state with the new analysis
       setAiAnalysis(data[0] as AiAnalysisResult);
     } catch (err) {
@@ -437,28 +472,15 @@ const AiChannelAnalyzer = () => {
     }
   };
 
-  const handleChannelSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const channelId = e.target.value;
-    if (!channelId) {
-      setSelectedChannel(null);
-      return;
-    }
-    
-    const channel = userChannels.find(c => c.channel_id === channelId);
-    if (channel) {
-      setSelectedChannel(channel);
-    }
-  };
-
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 flex items-center">
           <Sparkles className="w-8 h-8 text-purple-600 mr-3" />
-          AI Channel Analyzer
+          Analisador de canais AI
         </h1>
         <p className="text-gray-600 mt-1">
-          Use AI to analyze competitors and generate content ideas with viral potential
+        Utilizar a IA para analisar a concorrência e gerar ideias de conteúdos com potencial viral
         </p>
       </div>
 
@@ -471,9 +493,9 @@ const AiChannelAnalyzer = () => {
             <div className="ml-3">
               <h3 className="text-sm font-medium text-amber-800">YouTube API key required</h3>
               <p className="text-sm text-amber-700 mt-1">
-                You need to add a YouTube API key before analyzing channels. 
-                <button 
-                  onClick={() => navigate('/api-keys')} 
+                You need to add a YouTube API key before analyzing channels.
+                <button
+                  onClick={() => navigate('/api-keys')}
                   className="ml-1 font-medium underline hover:text-amber-800"
                 >
                   Configure API key
@@ -484,59 +506,27 @@ const AiChannelAnalyzer = () => {
         </div>
       )}
 
-      {/* Channel Selection */}
-      <div className="bg-white shadow-lg rounded-xl overflow-hidden mb-8 border border-gray-100">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-800 flex items-center">
-              <Brain className="w-6 h-6 text-purple-600 mr-2" />
-              Selecionar o canal a analisar
-            </h2>
-            <button 
-              onClick={fetchUserChannels} 
-              className="text-gray-500 hover:text-gray-700 transition-colors"
-              title="Refresh channels"
+      {isLoadingChannels ? (
+        <div className="bg-white shadow-lg rounded-xl overflow-hidden mb-8 border border-gray-100 p-8">
+          <div className="flex justify-center items-center py-8">
+            <Loader className="w-8 h-8 text-purple-600 animate-spin mr-3" />
+            <p className="text-gray-600">Carregando canal principal...</p>
+          </div>
+        </div>
+      ) : !selectedChannel ? (
+        <div className="bg-white shadow-lg rounded-xl overflow-hidden mb-8 border border-gray-100 p-8">
+          <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+            <p className="text-gray-600 mb-4">Você precisa adicionar um canal primeiro para usar o analisador AI.</p>
+            <button
+              onClick={() => navigate('/channel-analysis')}
+              className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
             >
-              <RefreshCw className="w-5 h-5" />
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Adicionar um Canal
             </button>
           </div>
-
-          {isLoadingChannels ? (
-            <div className="flex justify-center items-center py-8">
-              <Loader className="w-8 h-8 text-purple-600 animate-spin mr-3" />
-              <p className="text-gray-600">Carregando seus canais...</p>
-            </div>
-          ) : userChannels.length === 0 ? (
-            <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-gray-600 mb-4">Ainda não analisou nenhum canal.</p>
-              <button 
-                onClick={() => navigate('/channel-analysis')} 
-                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
-              >
-                <PlusCircle className="w-4 h-4 mr-2" />
-                Analyze a Channel
-              </button>
-            </div>
-          ) : (
-            <div>
-              <select
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                value={selectedChannel?.channel_id || ''}
-                onChange={handleChannelSelect}
-              >
-                <option value="">Selecionar um canal para analisar</option>
-                {userChannels.map((channel) => (
-                  <option key={channel.channel_id} value={channel.channel_id}>
-                    {channel.title} ({channel.subscriber_count.toLocaleString()} subscribers)
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
-      </div>
-
-      {selectedChannel && (
+      ) : (
         <div className="bg-white shadow-lg rounded-xl overflow-hidden mb-8 border border-gray-100">
           <div className="p-6 border-b border-gray-100">
             <div className="flex items-center justify-between mb-4">
@@ -544,15 +534,20 @@ const AiChannelAnalyzer = () => {
                 <Sparkles className="w-5 h-5 text-purple-600 mr-2" />
                 <h2 className="text-xl font-semibold text-gray-800">Análise de IA para "{selectedChannel.title}"</h2>
               </div>
-              <button 
-                onClick={() => setShowInfo(!showInfo)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-                title="Information about this tool"
-              >
-                <Info className="w-5 h-5" />
-              </button>
+              <div className="flex items-center">
+                <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 mr-2">
+                  Canal Principal
+                </span>
+                <button
+                  onClick={() => setShowInfo(!showInfo)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Information about this tool"
+                >
+                  <Info className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-            
+
             {showInfo && (
               <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-100 text-sm text-purple-800">
                 <p className="mb-2">
@@ -566,21 +561,34 @@ const AiChannelAnalyzer = () => {
                 </ol>
               </div>
             )}
-            
+
             <p className="text-gray-600 mb-6">
               Adicione canais da concorrência e use IA para identificar tendências e oportunidades de conteúdo viral
             </p>
-            
+
+            <div className="mt-4 flex items-center mb-6">
+              <input
+                type="checkbox"
+                id="analyzeAllChannels"
+                checked={analyzeAllChannels}
+                onChange={() => setAnalyzeAllChannels(!analyzeAllChannels)}
+                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+              />
+              <label htmlFor="analyzeAllChannels" className="ml-2 text-sm text-gray-700">
+                Usar todos os canais adicionados na análise (além dos competidores)
+              </label>
+            </div>
+
             {/* Competitor Management */}
             <div className="mb-8">
-              <h3 className="text-lg font-medium text-gray-800 mb-3">Manage Competitors</h3>
-              
+              <h3 className="text-lg font-medium text-gray-800 mb-3">Gerir concorrentes</h3>
+
               <form onSubmit={handleAddCompetitor} className="mb-4">
                 <div className="flex flex-col md:flex-row gap-3">
                   <div className="flex-grow">
                     <input
                       type="text"
-                      placeholder="Competitor channel URL or name"
+                      placeholder="URL ou nome do canal do concorrente"
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                       value={competitorUrl}
                       onChange={(e) => setCompetitorUrl(e.target.value)}
@@ -606,7 +614,7 @@ const AiChannelAnalyzer = () => {
                   </button>
                 </div>
               </form>
-              
+
               {error && (
                 <div className="p-4 mb-4 text-sm text-red-700 bg-red-50 rounded-lg border border-red-200">
                   <div className="flex">
@@ -615,16 +623,24 @@ const AiChannelAnalyzer = () => {
                   </div>
                 </div>
               )}
-              
+
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <h4 className="font-medium text-gray-700 mb-3">Canais da concorrência</h4>
-                
-                {competitors.length === 0 ? (
+
+                {competitors.length === 0 && !analyzeAllChannels ? (
                   <p className="text-gray-500 text-sm">
                     Nenhum concorrente adicionado. Adicione canais para iniciar a análise.
                   </p>
                 ) : (
                   <ul className="space-y-2">
+                    {analyzeAllChannels && userChannels.length > 1 && (
+                      <li className="p-3 bg-purple-50 rounded-lg border border-purple-100">
+                        <span className="font-medium text-purple-800">
+                          {userChannels.length - 1} canais do seu perfil serão incluídos na análise
+                        </span>
+                      </li>
+                    )}
+
                     {competitors.map((competitor) => (
                       <li key={competitor.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 hover:shadow-sm transition-all">
                         <span className="font-medium text-gray-800">{competitor.title}</span>
@@ -641,45 +657,12 @@ const AiChannelAnalyzer = () => {
                 )}
               </div>
             </div>
-            
-            {/* OpenAI API Key */}
-            <div className="mb-8">
-              <h3 className="text-lg font-medium text-gray-800 mb-3 flex items-center">
-                <Brain className="w-5 h-5 text-purple-600 mr-2" />
-                Configuração da API OpenAI
-              </h3>
-              
-              <div className="flex flex-col md:flex-row gap-3 mb-2">
-                <div className="flex-grow">
-                  <input
-                    type="password"
-                    placeholder="Enter your OpenAI API key"
-                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
-                      showApiKeyError ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                    }`}
-                    value={openaiApiKey}
-                    onChange={(e) => setOpenaiApiKey(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              {showApiKeyError && (
-                <p className="text-sm text-red-600 mt-1 ml-1">
-                  Uma chave API do OpenAI é necessária para gerar análises de IA
-                </p>
-              )}
-              
-              <p className="text-xs text-gray-500 mt-2">
-                A sua chave API é utilizada apenas para esta análise e não é armazenada permanentemente.
-                Obter uma chave em <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">platform.openai.com</a>
-              </p>
-            </div>
-            
+
             {/* Generate Analysis Button */}
             <div className="mb-4">
               <button
                 onClick={generateAiAnalysis}
-                disabled={isGeneratingAnalysis || competitors.length === 0}
+                disabled={isGeneratingAnalysis || (!analyzeAllChannels && competitors.length === 0) || (userChannels.length <= 1 && competitors.length === 0)}
                 className="w-full px-5 py-4 bg-gradient-to-r from-purple-600 to-purple-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-md"
               >
                 {isGeneratingAnalysis ? (
@@ -694,13 +677,13 @@ const AiChannelAnalyzer = () => {
                   </>
                 )}
               </button>
-              
+
               <p className="text-xs text-center text-gray-500 mt-2">
                 Esta análise utiliza o GPT-4o para processar dados de vídeos virais e gerar informações estratégicas
               </p>
             </div>
           </div>
-          
+
           {/* Analysis Results */}
           {aiAnalysis && (
             <div className="p-6 bg-gradient-to-r from-purple-50 to-purple-50">
@@ -710,16 +693,16 @@ const AiChannelAnalyzer = () => {
                   Análise do potencial viral
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Gerado em {new Date(aiAnalysis.created_at).toLocaleDateString('en-US', { 
-                    day: '2-digit', 
-                    month: '2-digit', 
+                  Gerado em {new Date(aiAnalysis.created_at).toLocaleDateString('en-US', {
+                    day: '2-digit',
+                    month: '2-digit',
                     year: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit'
                   })}
                 </p>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-purple-100">
                   <h4 className="font-medium text-purple-700 mb-3">Identificação de Tendências</h4>
@@ -734,13 +717,13 @@ const AiChannelAnalyzer = () => {
                     ))}
                   </ul>
                 </div>
-                
+
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-purple-100">
                   <h4 className="font-medium text-purple-700 mb-3">Padrões de Conteúdo</h4>
                   <ul className="space-y-2">
                     {aiAnalysis.analysis.patterns.map((pattern, index) => (
                       <li key={index} className="flex items-start">
-                        <span className="inline-flex items-center justify-center bg-purple-100 text-indipurplego-800 w-6 h-6 rounded-full text-xs font-medium mr-2 mt-0.5">
+                        <span className="inline-flex items-center justify-center bg-purple-100 text-purple-800 w-6 h-6 rounded-full text-xs font-medium mr-2 mt-0.5">
                           {index + 1}
                         </span>
                         <span className="text-gray-700">{pattern}</span>
@@ -748,7 +731,7 @@ const AiChannelAnalyzer = () => {
                     ))}
                   </ul>
                 </div>
-                
+
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-purple-100">
                   <h4 className="font-medium text-purple-700 mb-3">Nichos com Potencial Viral</h4>
                   <ul className="space-y-2">
@@ -762,7 +745,7 @@ const AiChannelAnalyzer = () => {
                     ))}
                   </ul>
                 </div>
-                
+
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-green-100 md:col-span-2">
                   <h4 className="font-medium text-green-700 mb-3">Ideias de conteudo</h4>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

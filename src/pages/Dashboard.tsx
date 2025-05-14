@@ -3,45 +3,67 @@ import { Link } from 'react-router-dom';
 import { useChannelStore } from '../stores/channelStore';
 import { useApiKeyStore } from '../stores/apiKeyStore';
 import ChannelCard from '../components/ChannelCard';
-import AnalyticsOverview from '../components/AnalyticsOverview';
-import { Search, Plus, Key, Youtube, RefreshCw, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
+import ChannelAnalysisModal from '../components/ChannelAnalysisModal';
+import ApiKeysModal from '../components/ApiKeysModal';
+import { Search, Plus, Key, Youtube, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 
 const Dashboard = () => {
   const { channels, fetchChannels, isLoading } = useChannelStore();
   const { apiKeys, fetchApiKeys } = useApiKeyStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+  const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
+  const [isApiKeysModalOpen, setIsApiKeysModalOpen] = useState(false);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(undefined);
+
   useEffect(() => {
     fetchChannels();
     fetchApiKeys();
   }, [fetchChannels, fetchApiKeys]);
-  
+
   const filteredChannels = channels.filter(
     channel => channel.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await Promise.all([fetchChannels(), fetchApiKeys()]);
     setTimeout(() => setIsRefreshing(false), 800); // Pequeno atraso para feedback visual
   };
-  
+
+  const openAnalysisModal = (channelId?: string) => {
+    setSelectedChannelId(channelId);
+    setIsAnalysisModalOpen(true);
+  };
+
+  const closeAnalysisModal = () => {
+    setIsAnalysisModalOpen(false);
+    setSelectedChannelId(undefined);
+  };
+
+  const openApiKeysModal = () => {
+    setIsApiKeysModalOpen(true);
+  };
+
+  const closeApiKeysModal = () => {
+    setIsApiKeysModalOpen(false);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center">
             <Youtube className="w-8 h-8 text-purple-600 mr-3" />
-            Dashboard
+            Canais
           </h1>
           <p className="text-gray-600 mt-1">
             Análise e acompanhamento de desempenho de canais do YouTube
           </p>
         </div>
-        
-        <button 
-          onClick={handleRefresh} 
+
+        <button
+          onClick={handleRefresh}
           disabled={isRefreshing || isLoading}
           className="mt-4 md:mt-0 inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all disabled:opacity-50"
         >
@@ -58,7 +80,7 @@ const Dashboard = () => {
           )}
         </button>
       </div>
-      
+
       {/* Status da Chave API */}
       {apiKeys.length === 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-8 shadow-sm">
@@ -69,29 +91,18 @@ const Dashboard = () => {
             <div className="ml-3">
               <h3 className="text-sm font-medium text-amber-800">Nenhuma chave de API encontrada</h3>
               <p className="text-sm text-amber-700 mt-1">
-                Para começar a analisar canais, você precisa 
-                <Link to="/api-keys" className="font-medium underline text-amber-800 hover:text-amber-900 ml-1">
+                Para começar a analisar canais, você precisa
+                <button
+                  onClick={openApiKeysModal}
+                  className="font-medium underline text-amber-800 hover:text-amber-900 ml-1">
                   adicionar uma chave da API do YouTube
-                </Link>.
+                </button>.
               </p>
             </div>
           </div>
         </div>
       )}
-      
-      {/* Visão Geral de Análises */}
-      <div className="mb-8 bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
-        <div className="p-5 border-b border-gray-100 bg-gray-50">
-          <h2 className="text-xl font-semibold text-gray-800 flex items-center">
-            <TrendingUp className="w-5 h-5 text-purple-600 mr-2" />
-            Visão Geral de Análises
-          </h2>
-        </div>
-        <div className="p-5">
-          <AnalyticsOverview />
-        </div>
-      </div>
-      
+
       {/* Pesquisa e Adição de Canal */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-8">
         <div className="relative w-full md:w-96">
@@ -106,16 +117,16 @@ const Dashboard = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        
-        <Link 
-          to="/channel-analysis"
+
+        <button
+          onClick={() => openAnalysisModal()}
           className="inline-flex items-center px-5 py-3 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200 w-full md:w-auto justify-center shadow-md"
         >
           <Plus className="w-5 h-5 mr-2" />
           Analisar Novo Canal
-        </Link>
+        </button>
       </div>
-      
+
       {/* Grade de Canais */}
       {isLoading ? (
         <div className="flex justify-center items-center h-64 bg-white rounded-xl shadow-lg p-8 border border-gray-100">
@@ -127,7 +138,11 @@ const Dashboard = () => {
       ) : filteredChannels.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredChannels.map((channel) => (
-            <ChannelCard key={channel.id} channel={channel} />
+            <ChannelCard
+              key={channel.id}
+              channel={channel}
+              onAnalyzeClick={() => openAnalysisModal(channel.id)}
+            />
           ))}
         </div>
       ) : channels.length > 0 ? (
@@ -155,23 +170,25 @@ const Dashboard = () => {
           <p className="text-gray-600 mb-6 max-w-md mx-auto">
             Comece analisando seu primeiro canal do YouTube para visualizar estatísticas e desempenho.
           </p>
-          <Link 
-            to="/channel-analysis"
+          <button
+            onClick={() => openAnalysisModal()}
             className="inline-flex items-center px-5 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 focus:ring-purple-500 focus:ring-offset-2 focus:outline-none transition-all duration-200 shadow-md"
           >
             <Plus className="w-5 h-5 mr-2" />
             Analisar Seu Primeiro Canal
-          </Link>
-          
+          </button>
+
           {apiKeys.length === 0 && (
             <div className="mt-6 mx-auto max-w-md">
               <div className="flex items-start p-4 bg-amber-50 rounded-lg border border-amber-200">
                 <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
                 <p className="ml-3 text-sm text-amber-700">
-                  Você precisará 
-                  <Link to="/api-keys" className="font-medium underline mx-1">
+                  Você precisará
+                  <button
+                    onClick={openApiKeysModal}
+                    className="font-medium underline mx-1">
                     configurar uma chave API
-                  </Link> 
+                  </button>
                   antes de poder analisar canais.
                 </p>
               </div>
@@ -179,7 +196,7 @@ const Dashboard = () => {
           )}
         </div>
       )}
-      
+
       {channels.length > 0 && (
         <div className="mt-8 text-center">
           <p className="text-gray-500 text-sm">
@@ -187,6 +204,19 @@ const Dashboard = () => {
           </p>
         </div>
       )}
+
+      {/* Channel Analysis Modal */}
+      <ChannelAnalysisModal
+        isOpen={isAnalysisModalOpen}
+        onClose={closeAnalysisModal}
+        channelId={selectedChannelId}
+      />
+
+      {/* API Keys Modal */}
+      <ApiKeysModal
+        isOpen={isApiKeysModalOpen}
+        onClose={closeApiKeysModal}
+      />
     </div>
   );
 };

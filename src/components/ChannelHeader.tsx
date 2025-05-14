@@ -71,15 +71,13 @@ const ChannelHeader = ({ channel, analysisDate }: ChannelHeaderProps) => {
                 </p>
               </div>
               
-              <a 
-                href={`https://www.youtube.com/channel/${channel.channel_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button 
+                onClick={() => window.open(`https://www.youtube.com/channel/${channel.channel_id}`, '_blank', 'noopener,noreferrer')}
                 className="mt-3 md:mt-0 inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors px-3 py-2 bg-blue-50 rounded-lg hover:bg-blue-100"
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Ver no YouTube
-              </a>
+              </button>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

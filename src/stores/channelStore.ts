@@ -12,6 +12,7 @@ interface Channel {
   view_count: number;
   created_at: string;
   user_id: string;
+  is_main: boolean;
 }
 
 interface ChannelAnalysis {
@@ -54,6 +55,8 @@ interface ChannelState {
   fetchChannelAnalysis: (channelId: string) => Promise<void>;
   setCurrentChannel: (channel: Channel | null) => void;
   clearCurrentChannel: () => void;
+  setMainChannel: (channelId: string) => Promise<void>;
+  getMainChannel: () => Promise<Channel | null>;
 }
 
 export const useChannelStore = create<ChannelState>((set, get) => ({
@@ -62,7 +65,7 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
   currentAnalysis: null,
   isLoading: false,
   error: null,
-  
+
   fetchChannels: async () => {
     set({ isLoading: true, error: null });
     try {
@@ -70,9 +73,9 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
         .from('channels')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      
+
       set({ channels: data as Channel[] });
     } catch (error) {
       set({ error: (error as Error).message });
@@ -80,7 +83,7 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
       set({ isLoading: false });
     }
   },
-  
+
   analyzeChannel: async (channelUrl, options) => {
     set({ isLoading: true, error: null });
     try {
@@ -91,7 +94,16 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
 
       // Call our backend service to analyze the channel
       const result = await fetchChannelData(channelUrl, options);
-      
+
+      // Check if this is the user's first channel
+      const { data: existingChannels, error: countError } = await supabase
+        .from('channels')
+        .select('channel_id')
+        .eq('user_id', user.id);
+
+      if (countError) throw countError;
+      const isFirstChannel = existingChannels.length === 0;
+
       // Save the channel to the database
       const { data: channelData, error: channelError } = await supabase
         .from('channels')
@@ -102,13 +114,14 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
           subscriber_count: result.channelInfo.subscriber_count,
           video_count: result.channelInfo.video_count,
           view_count: result.channelInfo.view_count,
-          user_id: user.id
+          user_id: user.id,
+          is_main: isFirstChannel // Set as main if it's the first channel
         }, { onConflict: 'channel_id' })
         .select()
         .single();
-      
+
       if (channelError) throw channelError;
-      
+
       // Save the analysis
       const { data: analysisData, error: analysisError } = await supabase
         .from('channel_analyses')
@@ -119,10 +132,10 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
         })
         .select()
         .single();
-      
+
       if (analysisError) throw analysisError;
-      
-      set({ 
+
+      set({
         currentChannel: channelData as Channel,
         currentAnalysis: {
           id: analysisData.id,
@@ -131,7 +144,7 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
           videos: result.videos
         }
       });
-      
+
       // Add to channels list if not already there
       set(state => {
         const exists = state.channels.some(c => c.channel_id === channelData.channel_id);
@@ -155,7 +168,7 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
         .from('channel_analyses')
         .delete()
         .eq('channel_id', channelId);
-      
+
       if (analysesError) throw analysesError;
 
       // Then delete the channel
@@ -163,7 +176,7 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
         .from('channels')
         .delete()
         .eq('channel_id', channelId);
-      
+
       if (channelError) throw channelError;
 
       // Update local state
@@ -178,7 +191,7 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
       set({ isLoading: false });
     }
   },
-  
+
   fetchChannelAnalysis: async (channelId) => {
     set({ isLoading: true, error: null });
     try {
@@ -188,9 +201,9 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
         .select('*')
         .eq('channel_id', channelId)
         .single();
-      
+
       if (channelError) throw channelError;
-      
+
       // Get the latest analysis
       const { data: analysisData, error: analysisError } = await supabase
         .from('channel_analyses')
@@ -199,10 +212,10 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-      
+
       if (analysisError) throw analysisError;
-      
-      set({ 
+
+      set({
         currentChannel: channelData as Channel,
         currentAnalysis: {
           id: analysisData.id,
@@ -217,16 +230,74 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
       set({ isLoading: false });
     }
   },
-  
+
   setCurrentChannel: (channel) => {
     set({ currentChannel: channel });
   },
 
   clearCurrentChannel: () => {
-    set({ 
+    set({
       currentChannel: null,
       currentAnalysis: null,
       error: null
     });
+  },
+
+  setMainChannel: async (channelId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      await supabase
+        .from('channels')
+        .update({ is_main: false })
+        .eq('user_id', user.id)
+        .eq('is_main', true);
+
+      const { error } = await supabase
+        .from('channels')
+        .update({ is_main: true })
+        .eq('channel_id', channelId);
+
+      if (error) throw error;
+
+      set(state => ({
+        channels: state.channels.map(c => ({
+          ...c,
+          is_main: c.channel_id === channelId
+        }))
+      }));
+    } catch (error) {
+      set({ error: (error as Error).message });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  getMainChannel: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('channels')
+        .select('*')
+        .eq('is_main', true)
+        .limit(1)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return null;
+        }
+        throw error;
+      }
+
+      return data as Channel;
+    } catch (error) {
+      set({ error: (error as Error).message });
+      return null;
+    } finally {
+      set({ isLoading: false });
+    }
   }
 }));

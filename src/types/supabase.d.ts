@@ -49,6 +49,7 @@ export interface Database {
           view_count: number
           created_at: string
           user_id: string
+          is_main: boolean
         }
         Insert: {
           id?: string
@@ -60,6 +61,7 @@ export interface Database {
           view_count: number
           created_at?: string
           user_id?: string
+          is_main: boolean
         }
         Update: {
           id?: string
@@ -71,6 +73,7 @@ export interface Database {
           view_count?: number
           created_at?: string
           user_id?: string
+          is_main: boolean
         }
       }
       channel_analyses: {
