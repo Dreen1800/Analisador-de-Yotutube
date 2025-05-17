@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Instagram, Search, Loader, RefreshCw, Check, AlertCircle, Clock, Info } from 'lucide-react';
+import { Instagram, Plus, Trash2, AlertCircle, Search, User, ArrowRight, X, Loader } from 'lucide-react';
 import { useInstagramStore } from '../stores/instagramStore';
 import InstagramProfile from '../components/InstagramProfile';
 import InstagramPosts from '../components/InstagramPosts';
+import InstagramProfileModal from '../components/InstagramProfileModal';
 
 // Define interface for store profile to component props mapping
 interface ProfileProps {
@@ -36,78 +37,41 @@ interface PostProps {
 }
 
 export default function InstagramAnalytics() {
-    const [username, setUsername] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [checkingStatus, setCheckingStatus] = useState(false);
     const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [profileToDelete, setProfileToDelete] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isAppearing, setIsAppearing] = useState(false);
 
     const {
         profiles,
         currentProfile,
         posts,
-        activeScrapingJobs,
-        isLoading,
-        error: storeError,
         fetchProfiles,
-        scrapeProfile,
         setCurrentProfile,
         fetchPosts,
-        checkActiveScrapingJobs
+        checkActiveScrapingJobs,
+        deleteProfile,
+        isLoading,
+        error
     } = useInstagramStore();
 
     useEffect(() => {
         fetchProfiles();
         // Check for active jobs on load
         checkActiveScrapingJobs();
+        
+        // Animation effect on mount
+        setTimeout(() => {
+            setIsAppearing(true);
+        }, 100);
     }, [fetchProfiles, checkActiveScrapingJobs]);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!username.trim()) return;
-
-        setLoading(true);
-        setError(null);
-
-        try {
-            // Try to use the store's scrape function
-            await scrapeProfile(username.trim());
-            setUsername('');
-        } catch (err: any) {
-            setError(err.message || 'Error analyzing Instagram profile');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleProfileSelect = (profile: any) => {
         setCurrentProfile(profile);
         fetchPosts(profile.id);
-    };
-
-    const handleRefreshStatus = async () => {
-        setCheckingStatus(true);
-        try {
-            await checkActiveScrapingJobs();
-
-            // If we have active jobs, show a loading message
-            if (activeScrapingJobs.length > 0) {
-                // Find the job related to the current profile if any
-                const currentProfileJob = currentProfile
-                    ? activeScrapingJobs.find(job => job.profileUsername === currentProfile.username)
-                    : null;
-
-                if (currentProfileJob && currentProfileJob.status === 'succeeded' && currentProfile) {
-                    // If job succeeded and we have a current profile, refresh its posts
-                    await fetchPosts(currentProfile.id);
-                }
-            }
-        } catch (error) {
-            console.error('Error checking job status:', error);
-        } finally {
-            setTimeout(() => setCheckingStatus(false), 1000);
-        }
     };
 
     const handleImgError = (id: string) => {
@@ -117,19 +81,39 @@ export default function InstagramAnalytics() {
         }));
     };
 
-    const hasActiveJobs = activeScrapingJobs.length > 0;
+    // Add the handleOpenProfileModal function
+    const handleOpenProfileModal = () => {
+        setIsProfileModalOpen(true);
+    };
 
-    // Get job status icon and color
-    const getJobStatusInfo = (status: string) => {
-        switch (status) {
-            case 'succeeded':
-                return { icon: <Check className="h-4 w-4 text-green-600" />, color: 'text-green-600' };
-            case 'failed':
-                return { icon: <AlertCircle className="h-4 w-4 text-red-600" />, color: 'text-red-600' };
-            case 'timeout':
-                return { icon: <Clock className="h-4 w-4 text-orange-600" />, color: 'text-orange-600' };
-            default:
-                return { icon: <Loader className="h-4 w-4 text-blue-600 animate-spin" />, color: 'text-blue-600' };
+    const handleCloseProfileModal = () => {
+        setIsProfileModalOpen(false);
+    };
+
+    // Delete profile functions
+    const handleDeleteClick = (e: React.MouseEvent, profileId: string) => {
+        e.stopPropagation(); // Prevent profile selection when clicking delete
+        setProfileToDelete(profileId);
+    };
+
+    const handleCancelDelete = () => {
+        setProfileToDelete(null);
+        setDeleteError(null);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!profileToDelete) return;
+
+        setIsDeleting(true);
+        setDeleteError(null);
+
+        try {
+            await deleteProfile(profileToDelete);
+            setProfileToDelete(null);
+        } catch (err: any) {
+            setDeleteError(err.message || 'Erro ao excluir perfil');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -168,169 +152,248 @@ export default function InstagramAnalytics() {
         }));
     };
 
+    // Filter profiles based on search term
+    const filteredProfiles = profiles.filter(profile => 
+        profile.username.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
-        <div className="container mx-auto p-6">
-            <div className="mb-8 text-center">
-                <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center">
-                    <Instagram className="h-8 w-8 mr-2 text-purple-600" />
-                    Instagram Analytics
-                </h1>
-                <p className="text-gray-600">
-                    Analyze Instagram profiles and get insights about their content and engagement.
-                </p>
-            </div>
-
-            <div className="max-w-xl mx-auto bg-white rounded-lg shadow-md p-6 mb-8">
-                <form onSubmit={handleSubmit} className="flex items-center space-x-2">
-                    <div className="relative flex-1">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <input
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            placeholder="Enter Instagram username"
-                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                            disabled={loading || isLoading}
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        disabled={loading || isLoading}
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading || isLoading ? (
-                            <>
-                                <Loader className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
-                                Analyzing...
-                            </>
-                        ) : (
-                            'Analyze Profile'
-                        )}
-                    </button>
-                </form>
-
-                {(error || storeError) && (
-                    <div className="mt-4 p-3 text-sm text-red-600 bg-red-50 rounded-md">
-                        {error || storeError}
-                    </div>
-                )}
-
-                {/* Active scraping jobs status */}
-                {hasActiveJobs && (
-                    <div className="mt-4">
-                        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                            <div className="flex">
-                                <div className="flex-shrink-0">
-                                    <Info className="h-5 w-5 text-blue-600" />
-                                </div>
-                                <div className="ml-3 flex-1">
-                                    <h3 className="text-sm font-medium text-blue-800">
-                                        Instagram Profile Scraping
-                                    </h3>
-                                    <div className="mt-2 text-sm text-blue-700">
-                                        <ul className="divide-y divide-blue-200">
-                                            {activeScrapingJobs.map(job => {
-                                                const { icon, color } = getJobStatusInfo(job.status);
-                                                return (
-                                                    <li key={job.runId} className="py-2">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center">
-                                                                {icon}
-                                                                <span className="ml-2">@{job.profileUsername}</span>
-                                                            </div>
-                                                            <div className={`text-xs ${color}`}>
-                                                                {job.status === 'running' ? 'Processing...' :
-                                                                    job.status === 'succeeded' ? 'Complete' :
-                                                                        job.error || job.status}
-                                                            </div>
-                                                        </div>
-                                                    </li>
-                                                );
-                                            })}
-                                        </ul>
-                                    </div>
-                                    <div className="mt-3">
-                                        <button
-                                            type="button"
-                                            onClick={handleRefreshStatus}
-                                            disabled={checkingStatus}
-                                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none disabled:opacity-50"
-                                        >
-                                            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${checkingStatus ? 'animate-spin' : ''}`} />
-                                            {checkingStatus ? 'Checking...' : 'Update Status'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
+        <div className={`container mx-auto p-4 md:p-6 transition-all duration-500 ease-out ${isAppearing ? 'opacity-100' : 'opacity-0'}`}>
             {profiles.length === 0 ? (
-                <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                    <div className="text-center py-8 text-gray-500">
-                        <Instagram className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-                        <p>No profiles analyzed yet.</p>
-                        <p className="text-sm">Search for an Instagram username to get started.</p>
+                <div className="bg-white rounded-xl shadow-md p-8 text-center border border-gray-100 transform transition-all duration-500 hover:shadow-lg">
+                    <div className="text-center py-10 text-gray-500">
+                        <div className="bg-[#9e46d3]/10 w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6">
+                            <Instagram className="h-10 w-10 text-[#9e46d3]" />
+                        </div>
+                        <h3 className="text-xl font-medium text-gray-800 mb-2">Nenhum perfil analisado</h3>
+                        <p className="text-gray-500 mb-8 max-w-md mx-auto">Clique no botão abaixo para adicionar um perfil do Instagram para análise e acompanhamento.</p>
+                        <button
+                            onClick={handleOpenProfileModal}
+                            className="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-xl shadow-sm text-white bg-[#9e46d3] hover:bg-[#8a3dbd] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#9e46d3]"
+                        >
+                            <Plus className="h-5 w-5 mr-2" />
+                            Adicionar Perfil do Instagram
+                        </button>
                     </div>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="md:col-span-1 bg-white rounded-lg shadow-md p-6">
-                        <div className="text-lg font-semibold text-gray-700 mb-4">Saved Profiles</div>
-                        <div className="space-y-3">
-                            {profiles.map((profile) => (
-                                <div
-                                    key={profile.id}
-                                    className={`flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${currentProfile?.id === profile.id ? 'border-purple-500 bg-purple-50' : 'border-gray-200'
-                                        }`}
-                                    onClick={() => handleProfileSelect(profile)}
-                                >
-                                    {profile.profilePicUrl && !imgErrors[profile.id] ? (
-                                        <img
-                                            src={profile.profilePicUrl}
-                                            alt={profile.username}
-                                            className="w-10 h-10 rounded-full mr-3"
-                                            onError={() => handleImgError(profile.id)}
-                                            referrerPolicy="no-referrer"
-                                            crossOrigin="anonymous"
-                                        />
-                                    ) : (
-                                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                                            <Instagram className="w-5 h-5 text-gray-400" />
+                    <div className="md:col-span-1">
+                        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden transform transition-all duration-300 hover:shadow-lg">
+                            <div className="px-6 py-5 border-b border-gray-100">
+                                <div className="flex justify-between items-center mb-4">
+                                    <div className="flex items-center">
+                                        <div className="bg-[#9e46d3]/10 w-8 h-8 rounded-full flex items-center justify-center mr-3">
+                                            <User className="h-4 w-4 text-[#9e46d3]" />
                                         </div>
-                                    )}
+                                        <h2 className="text-lg font-semibold text-gray-800">Perfis Salvos</h2>
+                                    </div>
+                                    <button
+                                        onClick={handleOpenProfileModal}
+                                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-lg text-white bg-[#9e46d3] hover:bg-[#8a3dbd] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#9e46d3]"
+                                        title="Adicionar novo perfil do Instagram"
+                                    >
+                                        <Plus className="h-4 w-4 mr-1.5" />
+                                        Adicionar
+                                    </button>
+                                </div>
+
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Search className="h-4 w-4 text-gray-400" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:ring-[#9e46d3] focus:border-[#9e46d3] text-sm"
+                                        placeholder="Buscar perfis..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            {error && (
+                                <div className="mx-6 mt-4 p-4 text-sm text-red-600 bg-red-50 rounded-lg flex items-start">
+                                    <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5 text-red-500" />
                                     <div>
-                                        <div className="font-medium">@{profile.username}</div>
-                                        <div className="text-xs text-gray-500">
-                                            {profile.followersCount.toLocaleString()} followers
+                                        <div className="font-medium">Erro:</div>
+                                        <div>{error}</div>
+                                        <div className="mt-2 text-xs text-red-500">
+                                            Se o problema persistir, verifique o console do navegador para obter mais detalhes
+                                            ou entre em contato com o suporte.
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                            )}
+
+                            {isLoading ? (
+                                <div className="flex justify-center items-center py-8">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent border-[#9e46d3]"></div>
+                                </div>
+                            ) : (
+                                <div className="max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                                    {filteredProfiles.length === 0 ? (
+                                        <div className="text-center py-6 text-gray-500">
+                                            <p>Nenhum perfil encontrado</p>
+                                        </div>
+                                    ) : (
+                                        <div className="divide-y divide-gray-100">
+                                            {filteredProfiles.map((profile) => (
+                                                <div
+                                                    key={profile.id}
+                                                    className={`flex items-center px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors relative group ${
+                                                        currentProfile?.id === profile.id ? 'bg-[#9e46d3]/5 hover:bg-[#9e46d3]/10' : ''
+                                                    }`}
+                                                    onClick={() => handleProfileSelect(profile)}
+                                                >
+                                                    {currentProfile?.id === profile.id && (
+                                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#9e46d3]"></div>
+                                                    )}
+                                                    
+                                                    <div className="relative mr-3">
+                                                        {profile.profilePicUrl && !imgErrors[profile.id] ? (
+                                                            <div className={`${currentProfile?.id === profile.id ? 'ring-2 ring-[#9e46d3]' : 'ring-1 ring-gray-200'} rounded-full`}>
+                                                                <img
+                                                                    src={profile.profilePicUrl}
+                                                                    alt={profile.username}
+                                                                    className="w-12 h-12 rounded-full object-cover"
+                                                                    onError={() => handleImgError(profile.id)}
+                                                                    referrerPolicy="no-referrer"
+                                                                    crossOrigin="anonymous"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className={`w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center ${
+                                                                currentProfile?.id === profile.id ? 'ring-2 ring-[#9e46d3]' : 'ring-1 ring-gray-200'
+                                                            }`}>
+                                                                <Instagram className="w-6 h-6 text-gray-400" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="font-medium text-gray-900 truncate">@{profile.username}</div>
+                                                        <div className="text-xs text-gray-500 flex items-center mt-0.5">
+                                                            <span className="inline-block bg-[#9e46d3]/10 text-[#9e46d3] text-xs px-2 py-0.5 rounded-full">
+                                                                {profile.followersCount.toLocaleString()} seguidores
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center gap-2">
+                                                        {currentProfile?.id === profile.id && (
+                                                            <div className="h-6 w-6 rounded-full bg-[#9e46d3]/10 flex items-center justify-center">
+                                                                <ArrowRight className="h-3.5 w-3.5 text-[#9e46d3]" />
+                                                            </div>
+                                                        )}
+                                                        
+                                                        <button
+                                                            onClick={(e) => handleDeleteClick(e, profile.id)}
+                                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                                                            title="Excluir perfil"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     <div className="md:col-span-2">
                         {currentProfile ? (
-                            <div className="space-y-6">
+                            <div className="space-y-8">
                                 <InstagramProfile profile={mapProfileToProps(currentProfile)} />
                                 <InstagramPosts posts={mapPostsToProps(posts)} />
                             </div>
                         ) : (
-                            <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                                <div className="text-center py-8 text-gray-500">
-                                    <Instagram className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-                                    <p>Select a profile to view details</p>
+                            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-8 text-center transform transition-all duration-500 hover:shadow-lg">
+                                <div className="text-center py-10">
+                                    <div className="bg-gray-50 w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6">
+                                        <Instagram className="h-10 w-10 text-[#9e46d3]/40" />
+                                    </div>
+                                    <h3 className="text-xl font-medium text-gray-800 mb-2">Selecione um perfil</h3>
+                                    <p className="text-gray-500">Escolha um perfil na lista à esquerda para visualizar os detalhes e análises.</p>
                                 </div>
                             </div>
                         )}
                     </div>
                 </div>
             )}
+
+            {/* Delete Confirmation Modal */}
+            {profileToDelete && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center overflow-y-auto transition-all duration-300">
+                    <div 
+                        className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl transform transition-all duration-300"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between mb-5">
+                            <div className="flex items-center text-red-600">
+                                <div className="bg-red-100 p-2 rounded-lg mr-3">
+                                    <AlertCircle className="h-5 w-5" />
+                                </div>
+                                <h3 className="text-lg font-medium">Excluir Perfil</h3>
+                            </div>
+                            <button 
+                                onClick={handleCancelDelete}
+                                className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <p className="mb-5 text-gray-600">
+                            Tem certeza de que deseja excluir este perfil? Esta ação não pode ser desfeita, e todos os dados associados serão removidos permanentemente.
+                        </p>
+
+                        {deleteError && (
+                            <div className="mb-5 p-4 text-sm text-red-600 bg-red-50 rounded-lg flex items-start">
+                                <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <div className="font-medium">Falha ao excluir:</div>
+                                    <div>{deleteError}</div>
+                                    <div className="mt-2 text-xs">
+                                        Verifique se você tem permissões para excluir este perfil.
+                                        Mais detalhes estão disponíveis no console do navegador.
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex justify-end space-x-3 mt-6">
+                            <button
+                                onClick={handleCancelDelete}
+                                className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#9e46d3]"
+                                disabled={isDeleting}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleConfirmDelete}
+                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-red-600 hover:bg-red-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                                disabled={isDeleting}
+                            >
+                                {isDeleting ? (
+                                    <>
+                                        <Loader className="animate-spin h-4 w-4 mr-2" />
+                                        Excluindo...
+                                    </>
+                                ) : (
+                                    'Excluir Perfil'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal component */}
+            <InstagramProfileModal isOpen={isProfileModalOpen} onClose={handleCloseProfileModal} />
         </div>
     );
 }

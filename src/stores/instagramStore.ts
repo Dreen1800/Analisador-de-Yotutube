@@ -60,6 +60,7 @@ interface InstagramState {
     fetchPosts: (profileId: string) => Promise<void>;
     checkActiveScrapingJobs: () => Promise<void>;
     processFinishedScrapingJob: (job: ScrapingJob) => Promise<void>;
+    deleteProfile: (profileId: string) => Promise<void>;
 }
 
 export const useInstagramStore = create<InstagramState>((set, get) => ({
@@ -346,6 +347,105 @@ export const useInstagramStore = create<InstagramState>((set, get) => ({
                         : j
                 )
             }));
+        }
+    },
+
+    deleteProfile: async (profileId) => {
+        set({ isLoading: true, error: null });
+        try {
+            const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
+            if (!serviceKey) {
+                console.error(
+                    `== CONFIGURAÇÃO NECESSÁRIA ===
+A chave de serviço do Supabase não foi encontrada no arquivo .env.
+Para habilitar exclusões, adicione a seguinte linha ao seu arquivo .env:
+
+VITE_SUPABASE_SERVICE_KEY=sua_chave_de_servico
+
+Você pode encontrar esta chave no painel do Supabase:
+1. Acesse o painel do Supabase
+2. Vá para Configurações > API
+3. Encontre a chave "service_role key"
+4. Copie e adicione ao seu arquivo .env
+=================================`
+                );
+                throw new Error('Chave de serviço Supabase não encontrada. Verifique o console para instruções de configuração.');
+            }
+
+            console.log(`Tentando excluir perfil com ID: ${profileId}`);
+
+            const { data: profileData, error: fetchError } = await supabase
+                .from('instagram_profiles')
+                .select('username')
+                .eq('id', profileId)
+                .single();
+
+            if (fetchError) {
+                console.error('Erro ao verificar o perfil:', fetchError);
+                throw fetchError;
+            }
+
+            if (!profileData) {
+                throw new Error('Perfil não encontrado no banco de dados');
+            }
+
+            console.log(`Excluindo perfil do usuário @${profileData.username}...`);
+
+            let deleteSuccess = false;
+
+            try {
+                const { error: profileError } = await supabase
+                    .from('instagram_profiles')
+                    .delete()
+                    .eq('id', profileId);
+
+                if (profileError) {
+                    console.error('Erro ao excluir perfil (método padrão):', profileError);
+                    throw profileError;
+                }
+
+                const { data: checkData } = await supabase
+                    .from('instagram_profiles')
+                    .select('id')
+                    .eq('id', profileId);
+
+                if (!checkData || checkData.length === 0) {
+                    console.log('Perfil excluído com sucesso (método padrão)');
+                    deleteSuccess = true;
+                } else {
+                    console.warn('Perfil ainda existe após tentativa de exclusão padrão.');
+                }
+            } catch (standardDeleteError) {
+                console.error('Falha na exclusão padrão, tentando método alternativo:', standardDeleteError);
+            }
+
+            if (!deleteSuccess) {
+                console.log('Tentando método alternativo de exclusão via RPC (se configurado)...');
+                // Esta parte depende da sua função RPC 'admin_delete_profile'
+                // const { error: rpcError } = await supabase.rpc('admin_delete_profile', { profile_id_to_delete: profileId });
+                // if (rpcError) throw rpcError;
+                // deleteSuccess = true; 
+                if (!deleteSuccess) throw new Error('Falha na exclusão padrão e método RPC não implementado/executado aqui.');
+            }
+
+            if (!deleteSuccess) {
+                throw new Error('Não foi possível excluir o perfil usando nenhum dos métodos disponíveis');
+            }
+
+            set(state => ({
+                profiles: state.profiles.filter(profile => profile.id !== profileId),
+                currentProfile: state.currentProfile?.id === profileId ? null : state.currentProfile,
+                posts: state.currentProfile?.id === profileId ? [] : state.posts,
+                isLoading: false
+            }));
+
+            console.log('Estado da loja atualizado após exclusão');
+        } catch (error: any) {
+            console.error('Erro completo ao excluir perfil:', error);
+            set({
+                error: `Falha ao excluir perfil: ${error.message || 'Erro desconhecido'}`,
+                isLoading: false
+            });
         }
     }
 })); 
