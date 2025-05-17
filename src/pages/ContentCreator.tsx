@@ -6,7 +6,7 @@ function ContentCreator() {
             <h1 className="text-2xl font-bold mb-4">Criador de Conteúdo</h1>
             <div className="w-full flex-grow">
                 <iframe
-                    src="https://udify.app/chatbot/fwPJo4imWy7LGeGV"
+                    src="https://dify.nexialab.com.br/chatbot/3VbNlqAUji6N2ZkZ"
                     className="w-full h-full min-h-[50vh] md:min-h-[60vh] lg:min-h-[70vh]"
                     frameBorder="0"
                     allow="microphone"

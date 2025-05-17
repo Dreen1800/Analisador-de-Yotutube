@@ -7,13 +7,18 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:images": "node test-image-storage.js",
+    "deploy:functions": "node deploy-functions.js",
+    "deploy:edge": "node deploy-edge-function.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.7",
     "axios": "^1.6.7",
+    "buffer": "^6.0.3",
     "chart.js": "^4.4.1",
     "date-fns": "^3.3.1",
+    "dotenv": "^16.5.0",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.1",
     "lucide-react": "^0.344.0",

@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Home from './pages/Home'; // Nova importação
 import AiChannelAnalyzer from './pages/AiChannelAnalyzer';
 import ContentCreator from './pages/ContentCreator'; // Nova importação
+import InstagramAnalytics from './pages/InstagramAnalytics'; // Nova importação
 import NotFound from './pages/NotFound';
 
 // Components
@@ -62,6 +63,7 @@ function App() {
           <Route path="/dashboard" element={!user ? <Navigate to="/login" /> : <Dashboard />} />
           <Route path="/ai-analyzer" element={!user ? <Navigate to="/login" /> : <AiChannelAnalyzer />} />
           <Route path="/content-creator" element={!user ? <Navigate to="/login" /> : <ContentCreator />} /> {/* Nova rota */}
+          <Route path="/instagram-analytics" element={!user ? <Navigate to="/login" /> : <InstagramAnalytics />} /> {/* Nova rota */}
 
           <Route path="/" element={<Navigate to={user ? "/home" : "/login"} />} /> {/* Alterado para /home */}
           <Route path="*" element={<NotFound />} />
