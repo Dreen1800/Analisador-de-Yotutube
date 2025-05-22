@@ -45,10 +45,10 @@ const Navigation = () => {
 
   const navigation = [
     { name: 'Início', href: '/home', icon: HomeIcon },
+    { name: 'Instagram', href: '/instagram-analytics', icon: Instagram },
     { name: 'Canais', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Analisador IA', href: '/ai-analyzer', icon: Sparkles },
     { name: 'Criador de Conteúdo', href: '/content-creator', icon: Edit },
-    { name: 'Instagram Analytics', href: '/instagram-analytics', icon: Instagram },
   ];
 
   return (
