@@ -1,0 +1,30 @@
+{
+    "name": "instagram-image-proxy",
+    "version": "1.0.0",
+    "description": "Servidor proxy para imagens do Instagram",
+    "main": "instagram-proxy.js",
+    "scripts": {
+        "start": "node instagram-proxy.js",
+        "dev": "nodemon instagram-proxy.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "instagram",
+        "proxy",
+        "images",
+        "cors"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "express": "^4.18.2",
+        "cors": "^2.8.5",
+        "node-fetch": "^2.6.12"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.1"
+    },
+    "engines": {
+        "node": ">=14.0.0"
+    }
+}

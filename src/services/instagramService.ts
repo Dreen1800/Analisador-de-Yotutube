@@ -1,9 +1,10 @@
-import axios from 'axios'; import { supabase, supabaseAdmin } from '../lib/supabaseClient';
+import axios from 'axios';
+import { supabase, supabaseAdmin } from '../lib/supabaseClient';
 
-// Constante com o nome do bucket para uso em toda a aplicação - usar traço
+// Constante com o nome do bucket para uso em toda a aplicação
 const INSTAGRAM_IMAGES_BUCKET = 'instagram-images';
 
-// Primeiro, vamos atualizar a interface do objeto de post para incluir a nova propriedade
+// Interface do objeto de post
 interface InstagramPost {
     profile_id: string;
     instagram_id: string;
@@ -21,16 +22,14 @@ interface InstagramPost {
     mentions: string | null;
     product_type: string | null;
     is_comments_disabled: boolean | null;
-    image_from_supabase?: boolean; // Nova propriedade adicionada
-    supabase_url?: boolean; // Flag temporária
+    image_from_supabase?: boolean;
 }
 
-// Função aprimorada para verificar se o bucket existe usando a chave secreta do Supabase
+// Função para verificar se o bucket existe
 async function ensureImageBucketExists(): Promise<boolean> {
     try {
         console.log('Verificando se o bucket existe...');
 
-        // Tentar listar o bucket usando o cliente admin com chave secreta
         const { data, error } = await supabaseAdmin.storage
             .from(INSTAGRAM_IMAGES_BUCKET)
             .list('', { limit: 1 });
@@ -40,16 +39,14 @@ async function ensureImageBucketExists(): Promise<boolean> {
             return true;
         }
 
-        // Se houver erro no acesso, verificar se é um erro de "bucket não existe"
         if (error.message && (
             error.message.includes('does not exist') ||
             error.message.includes('não existe')
         )) {
             console.log(`Bucket ${INSTAGRAM_IMAGES_BUCKET} não encontrado. Tentando criar...`);
 
-            // Tentar criar o bucket - isso só funciona com a chave secreta
             try {
-                const { data: createData, error: createError } = await supabaseAdmin.storage.createBucket(
+                const { error: createError } = await supabaseAdmin.storage.createBucket(
                     INSTAGRAM_IMAGES_BUCKET,
                     { public: true }
                 );
@@ -75,78 +72,165 @@ async function ensureImageBucketExists(): Promise<boolean> {
     }
 }
 
-// Get the API key from Supabase
-const getApifyKey = async (): Promise<string> => {
+// Função para gerar um nome de arquivo único
+function generateUniqueFileName(originalUrl: string, prefix: string = ''): string {
     try {
-        const { data, error } = await supabase
-            .from('apify_keys')
-            .select('*')
-            .eq('is_active', true)
-            .single();
-
-        if (error) throw error;
-        if (!data) throw new Error('No active Apify API key found');
-
-        return data.api_key;
-    } catch (error: any) {
-        console.error('Error fetching Apify key:', error);
-        throw new Error('Failed to retrieve Apify API key. Please add an Apify API key in your settings.');
+        const url = new URL(originalUrl);
+        const pathParts = url.pathname.split('/');
+        const fileName = pathParts[pathParts.length - 1] || 'image';
+        
+        // Remover parâmetros de query do nome do arquivo
+        const cleanFileName = fileName.split('?')[0];
+        
+        // Garantir que tem uma extensão
+        const hasExtension = cleanFileName.includes('.');
+        const finalFileName = hasExtension ? cleanFileName : `${cleanFileName}.jpg`;
+        
+        // Adicionar timestamp para garantir unicidade
+        const timestamp = Date.now();
+        const nameParts = finalFileName.split('.');
+        const extension = nameParts.pop();
+        const name = nameParts.join('.');
+        
+        return prefix ? `${prefix}/${name}_${timestamp}.${extension}` : `${name}_${timestamp}.${extension}`;
+    } catch (error) {
+        // Fallback se a URL for inválida
+        const timestamp = Date.now();
+        return prefix ? `${prefix}/image_${timestamp}.jpg` : `image_${timestamp}.jpg`;
     }
-};
-
-// Função simples para converter URLs do Instagram para o proxy local
-function convertToProxyUrl(imageUrl: string): string {
-    if (!imageUrl || !imageUrl.startsWith('http')) return '';
-
-    // Qualquer URL do Instagram deve ser redirecionada pelo proxy
-    if (imageUrl.includes('instagram.com') ||
-        imageUrl.includes('cdninstagram') ||
-        imageUrl.includes('fbcdn.net')) {
-
-        try {
-            // Extrair apenas o caminho da URL original após o domínio
-            const urlParts = new URL(imageUrl);
-            const path = urlParts.pathname + urlParts.search;
-
-            // Criar URL de proxy local básica
-            return `/instagram-img-proxy${path}`;
-        } catch (error) {
-            console.error('Erro ao processar URL do Instagram:', error);
-            return imageUrl; // Retornar URL original em caso de erro
-        }
-    }
-
-    // Retornar URL original para outras fontes
-    return imageUrl;
 }
 
-// Função simplificada para apenas retornar URL via proxy
+// Função principal para baixar e armazenar imagens
 export async function downloadAndStoreImage(imageUrl: string, storagePath: string): Promise<string | null> {
-    // Validação básica de URL
     if (!imageUrl || (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://'))) {
         console.warn('URL inválida:', imageUrl);
         return imageUrl;
     }
 
     try {
-        // Em desenvolvimento, apenas usar proxy local
-        const proxiedUrl = convertToProxyUrl(imageUrl);
-
-        // Verificar se a URL foi convertida corretamente
-        if (proxiedUrl && proxiedUrl !== imageUrl) {
-            console.log(`URL convertida para proxy: ${proxiedUrl}`);
-            return proxiedUrl;
-        } else {
-            console.warn(`Falha ao converter URL para proxy: ${imageUrl}`);
-            return imageUrl; // Retornar a URL original se falhar
+        // Verificar se o bucket existe antes de tentar fazer upload
+        const bucketExists = await ensureImageBucketExists();
+        if (!bucketExists) {
+            console.warn('Bucket não disponível. Usando URL de proxy como fallback.');
+            return convertToProxyUrl(imageUrl);
         }
+
+        console.log(`Iniciando download da imagem: ${imageUrl}`);
+
+        // Gerar nome único para o arquivo
+        const uniqueFileName = generateUniqueFileName(imageUrl, storagePath);
+        console.log(`Nome do arquivo gerado: ${uniqueFileName}`);
+
+        // Tentar baixar a imagem diretamente primeiro
+        let imageData: ArrayBuffer;
+        let contentType = 'image/jpeg';
+
+        try {
+            const response = await fetch(imageUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                    'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                    'Referer': 'https://www.instagram.com/',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Erro HTTP: ${response.status}`);
+            }
+
+            imageData = await response.arrayBuffer();
+            contentType = response.headers.get('content-type') || 'image/jpeg';
+            console.log(`Download direto bem-sucedido. Tamanho: ${imageData.byteLength} bytes`);
+
+        } catch (directError) {
+            console.log('Download direto falhou, tentando via Edge Function...');
+            
+            // Tentar usar a Edge Function como fallback
+            try {
+                const edgeFunctionResponse = await supabase.functions.invoke('download-instagram-image', {
+                    body: {
+                        imageUrl: imageUrl,
+                        storagePath: uniqueFileName,
+                        bucketName: INSTAGRAM_IMAGES_BUCKET
+                    }
+                });
+
+                if (edgeFunctionResponse.error) {
+                    throw new Error(`Edge Function error: ${edgeFunctionResponse.error.message}`);
+                }
+
+                if (edgeFunctionResponse.data?.success && edgeFunctionResponse.data?.publicUrl) {
+                    console.log(`Imagem salva via Edge Function: ${edgeFunctionResponse.data.publicUrl}`);
+                    return edgeFunctionResponse.data.publicUrl;
+                } else {
+                    throw new Error('Edge Function não retornou URL válida');
+                }
+
+            } catch (edgeError) {
+                console.error('Edge Function também falhou:', edgeError);
+                console.log('Usando URL de proxy como último recurso...');
+                return convertToProxyUrl(imageUrl);
+            }
+        }
+
+        // Se chegou até aqui, o download direto funcionou
+        // Fazer upload para o Supabase Storage
+        console.log(`Fazendo upload para o Supabase Storage...`);
+        
+        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+            .from(INSTAGRAM_IMAGES_BUCKET)
+            .upload(uniqueFileName, imageData, {
+                contentType: contentType,
+                upsert: true,
+                cacheControl: '3600',
+            });
+
+        if (uploadError) {
+            console.error('Erro no upload:', uploadError);
+            throw uploadError;
+        }
+
+        // Obter URL pública
+        const { data: urlData } = supabaseAdmin.storage
+            .from(INSTAGRAM_IMAGES_BUCKET)
+            .getPublicUrl(uniqueFileName);
+
+        if (!urlData.publicUrl) {
+            throw new Error('Não foi possível obter URL pública');
+        }
+
+        console.log(`Imagem salva com sucesso: ${urlData.publicUrl}`);
+        return urlData.publicUrl;
+
     } catch (error) {
-        console.error(`Erro ao processar URL ${imageUrl}:`, error);
-        return imageUrl; // Retornar URL original em caso de erro
+        console.error(`Erro ao processar imagem ${imageUrl}:`, error);
+        // Como fallback, retornar URL de proxy
+        return convertToProxyUrl(imageUrl);
     }
 }
 
-// Função utilitária para componentes de exibição verificarem se a URL é do Supabase
+// Função para converter URLs do Instagram para proxy local
+function convertToProxyUrl(imageUrl: string): string {
+    if (!imageUrl || !imageUrl.startsWith('http')) return '';
+
+    if (imageUrl.includes('instagram.com') ||
+        imageUrl.includes('cdninstagram') ||
+        imageUrl.includes('fbcdn.net')) {
+
+        try {
+            const urlParts = new URL(imageUrl);
+            const path = urlParts.pathname + urlParts.search;
+            return `/instagram-img-proxy${path}`;
+        } catch (error) {
+            console.error('Erro ao processar URL do Instagram:', error);
+            return imageUrl;
+        }
+    }
+
+    return imageUrl;
+}
+
+// Função para componentes verificarem se a URL é do Supabase
 export function getProxiedImageUrl(imageUrl: string): string {
     if (!imageUrl) return '';
 
@@ -170,9 +254,27 @@ export function getProxiedImageUrl(imageUrl: string): string {
     return imageUrl;
 }
 
+// Get the API key from Supabase
+const getApifyKey = async (): Promise<string> => {
+    try {
+        const { data, error } = await supabase
+            .from('apify_keys')
+            .select('*')
+            .eq('is_active', true)
+            .single();
+
+        if (error) throw error;
+        if (!data) throw new Error('No active Apify API key found');
+
+        return data.api_key;
+    } catch (error: any) {
+        console.error('Error fetching Apify key:', error);
+        throw new Error('Failed to retrieve Apify API key. Please add an Apify API key in your settings.');
+    }
+};
+
 // Helper function to get the best possible profile image URL
 const getBestProfileImageUrl = (profileData: any): string => {
-    // Try different possible fields for profile images
     const possibleUrls = [
         profileData.profilePicUrlHD,
         profileData.profilePicUrl,
@@ -180,10 +282,8 @@ const getBestProfileImageUrl = (profileData: any): string => {
         profileData.profile_pic_url
     ];
 
-    // Return the first non-empty URL
     for (const url of possibleUrls) {
         if (url && typeof url === 'string' && url.trim() !== '') {
-            // Check if URL has a protocol
             if (!url.startsWith('http')) {
                 return `https://${url}`;
             }
@@ -191,14 +291,13 @@ const getBestProfileImageUrl = (profileData: any): string => {
         }
     }
 
-    return ''; // Return empty string if no URL is found
+    return '';
 };
 
 export async function scrapeInstagramProfile(username: string) {
     try {
         const apifyToken = await getApifyKey();
 
-        // Start scraping
         const runResponse = await axios.post(
             `https://api.apify.com/v2/acts/apify~instagram-scraper/runs?token=${apifyToken}`,
             {
@@ -220,8 +319,6 @@ export async function scrapeInstagramProfile(username: string) {
 
         const runId = runResponse.data.data.id;
 
-        // For now just return the runId - this would be used to check status
-        // In a real implementation, we would poll for completion and then fetch results
         return {
             status: 'started',
             runId,
@@ -255,11 +352,9 @@ export async function checkScrapingStatus(runId: string) {
 
         console.log('Status response:', JSON.stringify(statusResponse.data, null, 2));
 
-        // Get the defaultDatasetId from the response - this is key for fetching results
         const defaultDatasetId = statusResponse.data.data?.defaultDatasetId ||
             statusResponse.data.defaultDatasetId;
 
-        // If we have a dataset ID but job is still running, it might already have partial results
         const status = statusResponse.data.data?.status || statusResponse.data.status;
 
         return {
@@ -276,9 +371,7 @@ export async function checkScrapingStatus(runId: string) {
     }
 }
 
-// Agora vamos atualizar o retorno da função createSafePostObject
 async function createSafePostObject(post: any, profileId: string): Promise<InstagramPost> {
-    // Base post object with required fields
     const basePost: InstagramPost = {
         profile_id: profileId,
         instagram_id: post.id,
@@ -307,7 +400,6 @@ export async function fetchScrapingResults(datasetId: string) {
 
         console.log(`Fetching results for dataset ID: ${datasetId}`);
 
-        // Direct API call to the dataset endpoint
         const resultsResponse = await axios.get(
             `https://api.apify.com/v2/datasets/${datasetId}/items?token=${apifyToken}`,
             {
@@ -327,35 +419,16 @@ export async function fetchScrapingResults(datasetId: string) {
             throw new Error('No Instagram profile data received from Apify');
         }
 
-        // Process and store the results
-        const profileData = resultsResponse.data[0]; // Assuming first item is the profile
+        const profileData = resultsResponse.data[0];
 
-        // Get the best profile image URL
         const profilePicUrl = getBestProfileImageUrl(profileData);
         console.log(`Using profile image URL: ${profilePicUrl}`);
 
-        // Verificar autenticação do usuário antes de continuar
         const { data: userData, error: userError } = await supabase.auth.getUser();
         if (userError || !userData.user) {
             throw new Error('User not authenticated');
         }
 
-        // Verificar ou criar o bucket antes de iniciar os downloads
-        try {
-            const bucketExists = await ensureImageBucketExists();
-            if (!bucketExists) {
-                console.warn('O bucket de armazenamento não está disponível. As imagens não serão armazenadas no Supabase.');
-                // Continuar mesmo sem o bucket, mas as imagens não serão salvas
-            } else {
-                console.log('Bucket verificado e pronto para armazenamento');
-            }
-        } catch (bucketError: any) {
-            console.warn('Erro ao verificar bucket do Supabase:', bucketError);
-            console.warn('As imagens não serão armazenadas no Supabase.');
-            // Continuar mesmo com erro, mas as imagens não serão salvas
-        }
-
-        // Baixar as imagens de forma assíncrona antes de salvar no banco
         console.log('Iniciando download e armazenamento das imagens...');
 
         // Processar imagem de perfil
@@ -363,90 +436,71 @@ export async function fetchScrapingResults(datasetId: string) {
             downloadAndStoreImage(profilePicUrl, `profiles/${profileData.username}`)
             : Promise.resolve(null);
 
-        // Iniciar processamento das imagens dos posts em paralelo
+        // Processar imagens dos posts em paralelo
         const postImagePromises: Promise<void>[] = [];
         if (profileData.latestPosts && profileData.latestPosts.length > 0) {
-            console.log(`Iniciando processamento de ${profileData.latestPosts.length} imagens de posts`);
+            console.log(`Processando ${profileData.latestPosts.length} imagens de posts`);
 
-            // Limitar o número de downloads paralelos para evitar sobrecarga
             const CONCURRENT_DOWNLOADS = 3;
-            const postGroups = [];
-
-            // Dividir posts em grupos para processamento em lotes
+            
             for (let i = 0; i < profileData.latestPosts.length; i += CONCURRENT_DOWNLOADS) {
-                postGroups.push(profileData.latestPosts.slice(i, i + CONCURRENT_DOWNLOADS));
-            }
-
-            // Processar cada grupo sequencialmente, mas imagens dentro do grupo em paralelo
-            for (let groupIndex = 0; groupIndex < postGroups.length; groupIndex++) {
-                const group = postGroups[groupIndex];
-                console.log(`Processando grupo ${groupIndex + 1}/${postGroups.length} (${group.length} posts)`);
-
-                const groupPromise = async () => {
-                    const promises = group.map(async (post: any, postIndex: number) => {
-                        const globalIndex = groupIndex * CONCURRENT_DOWNLOADS + postIndex;
+                const batch = profileData.latestPosts.slice(i, i + CONCURRENT_DOWNLOADS);
+                
+                const batchPromise = async () => {
+                    const promises = batch.map(async (post: any, batchIndex: number) => {
+                        const globalIndex = i + batchIndex;
                         if (!post.displayUrl) return;
 
                         try {
-                            console.log(`Iniciando download da imagem do post ${globalIndex + 1}/${profileData.latestPosts.length}`);
+                            console.log(`Processando imagem do post ${globalIndex + 1}/${profileData.latestPosts.length}`);
 
-                            // Tentar baixar e armazenar a imagem no Supabase
                             const storedImageUrl = await downloadAndStoreImage(
                                 post.displayUrl,
                                 `posts/${profileData.username}`
                             );
 
-                            // Se tivermos uma URL do Supabase, use-a; caso contrário, mantenha a URL original
-                            if (storedImageUrl) {
-                                // Substituir a URL no objeto post
+                            if (storedImageUrl && storedImageUrl !== post.displayUrl) {
                                 profileData.latestPosts[globalIndex].displayUrl = storedImageUrl;
-                                profileData.latestPosts[globalIndex].supabase_url = true; // Flag para indicar que é do Supabase
-                                console.log(`Imagem do post ${globalIndex + 1} armazenada no Supabase: ${storedImageUrl}`);
+                                profileData.latestPosts[globalIndex].image_from_supabase = true;
+                                console.log(`Imagem do post ${globalIndex + 1} salva: ${storedImageUrl}`);
                             } else {
-                                console.warn(`Não foi possível armazenar imagem do post ${globalIndex + 1} no Supabase, mantendo URL original`);
-                                // Certificar-se de que a flag indique que não é do Supabase
-                                profileData.latestPosts[globalIndex].supabase_url = false;
+                                profileData.latestPosts[globalIndex].image_from_supabase = false;
                             }
                         } catch (imgError) {
                             console.error(`Erro ao processar imagem do post ${globalIndex + 1}:`, imgError);
-                            // Não interromper o processamento devido a falhas em imagens individuais
-                            profileData.latestPosts[globalIndex].supabase_url = false;
+                            profileData.latestPosts[globalIndex].image_from_supabase = false;
                         }
                     });
 
                     await Promise.all(promises);
-                    // Pequena pausa entre grupos para evitar sobrecarga
-                    if (groupIndex < postGroups.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 1000)); // Aumentado para 1 segundo
+                    // Pausa entre batches
+                    if (i + CONCURRENT_DOWNLOADS < profileData.latestPosts.length) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                 };
 
-                postImagePromises.push(groupPromise());
+                postImagePromises.push(batchPromise());
             }
         }
 
-        // Aguardar a conclusão do download da imagem de perfil
+        // Aguardar processamento da imagem de perfil
         let localProfilePicUrl = profilePicUrl;
         let profileImageFromSupabase = false;
 
         try {
-            console.log('Aguardando processamento da imagem de perfil...');
+            console.log('Processando imagem de perfil...');
             const storedProfileImageUrl = await profileImagePromise;
 
-            if (storedProfileImageUrl) {
+            if (storedProfileImageUrl && storedProfileImageUrl !== profilePicUrl) {
                 localProfilePicUrl = storedProfileImageUrl;
                 profileImageFromSupabase = true;
-                console.log(`Imagem de perfil armazenada no Supabase: ${localProfilePicUrl}`);
-            } else {
-                console.warn('Não foi possível armazenar a imagem de perfil no Supabase, mantendo URL original');
+                console.log(`Imagem de perfil salva: ${localProfilePicUrl}`);
             }
         } catch (profileImgError) {
             console.error('Erro ao processar imagem de perfil:', profileImgError);
-            // Continuar com a URL original em caso de erro
         }
 
         console.log('Verificando se o perfil já existe...');
-        // Check if profile already exists
         const { data: existingProfile } = await supabase
             .from('instagram_profiles')
             .select('id')
@@ -458,7 +512,6 @@ export async function fetchScrapingResults(datasetId: string) {
 
         if (existingProfile) {
             console.log('Atualizando perfil existente...');
-            // Update existing profile
             const { data: updatedProfile, error: updateError } = await supabase
                 .from('instagram_profiles')
                 .update({
@@ -468,8 +521,8 @@ export async function fetchScrapingResults(datasetId: string) {
                     followers_count: profileData.followersCount,
                     follows_count: profileData.followsCount,
                     posts_count: profileData.postsCount,
-                    profile_pic_url: localProfilePicUrl, // Use local image URL
-                    profile_pic_from_supabase: profileImageFromSupabase, // Nova flag para indicar fonte da imagem
+                    profile_pic_url: localProfilePicUrl,
+                    profile_pic_from_supabase: profileImageFromSupabase,
                     is_business_account: profileData.isBusinessAccount,
                     business_category_name: profileData.businessCategoryName,
                     updated_at: new Date().toISOString()
@@ -483,10 +536,8 @@ export async function fetchScrapingResults(datasetId: string) {
                 throw updateError;
             }
             profileRecord = updatedProfile;
-            console.log('Perfil existente atualizado com sucesso');
         } else {
             console.log('Inserindo novo perfil...');
-            // Insert new profile
             const { data: newProfile, error: profileError } = await supabase
                 .from('instagram_profiles')
                 .insert([
@@ -499,8 +550,8 @@ export async function fetchScrapingResults(datasetId: string) {
                         followers_count: profileData.followersCount,
                         follows_count: profileData.followsCount,
                         posts_count: profileData.postsCount,
-                        profile_pic_url: localProfilePicUrl, // Use local image URL
-                        profile_pic_from_supabase: profileImageFromSupabase, // Nova flag para indicar fonte da imagem
+                        profile_pic_url: localProfilePicUrl,
+                        profile_pic_from_supabase: profileImageFromSupabase,
                         is_business_account: profileData.isBusinessAccount,
                         business_category_name: profileData.businessCategoryName
                     }
@@ -513,26 +564,24 @@ export async function fetchScrapingResults(datasetId: string) {
                 throw profileError;
             }
             profileRecord = newProfile;
-            console.log('Novo perfil inserido com sucesso');
         }
 
-        // Aguardar a conclusão de todos os downloads de imagens dos posts
+        // Aguardar processamento das imagens dos posts
         if (postImagePromises.length > 0) {
             try {
-                console.log('Aguardando conclusão de todos os downloads de imagens...');
+                console.log('Aguardando conclusão do processamento das imagens...');
                 await Promise.all(postImagePromises);
-                console.log('Todos os downloads de imagens concluídos');
+                console.log('Processamento das imagens concluído');
             } catch (downloadError) {
-                console.error('Erro durante o download de imagens:', downloadError);
-                // Continuar com o processamento dos posts mesmo com erros
+                console.error('Erro durante o processamento:', downloadError);
             }
         }
 
-        // Process and store posts if available
+        // Processar e salvar posts
         if (profileData.latestPosts && profileData.latestPosts.length > 0) {
             console.log(`Salvando ${profileData.latestPosts.length} posts no banco de dados`);
 
-            // First delete existing posts for this profile to avoid duplicates
+            // Deletar posts existentes
             const { error: deleteError } = await supabase
                 .from('instagram_posts')
                 .delete()
@@ -543,23 +592,17 @@ export async function fetchScrapingResults(datasetId: string) {
             }
 
             try {
-                // Prepare post data with proper error handling
                 const postsToInsert = [];
                 for (const post of profileData.latestPosts) {
                     try {
                         const safePost = await createSafePostObject(post, profileRecord.id);
-
-                        // Adicionar flag indicando se a imagem está no Supabase
-                        safePost.image_from_supabase = post.supabase_url === true;
-
+                        safePost.image_from_supabase = post.image_from_supabase === true;
                         postsToInsert.push(safePost);
                     } catch (postError) {
                         console.error('Erro ao processar post:', postError);
-                        // Continuar com outros posts
                     }
                 }
 
-                // Insert posts in a single batch for better performance
                 if (postsToInsert.length > 0) {
                     console.log(`Inserindo ${postsToInsert.length} posts no banco de dados`);
                     const { error: insertError } = await supabase
@@ -567,44 +610,18 @@ export async function fetchScrapingResults(datasetId: string) {
                         .insert(postsToInsert);
 
                     if (insertError) {
-                        // Handle specific PostgreSQL error cases
-                        if (insertError.message.includes('column') && insertError.message.includes('does not exist')) {
-                            console.error('Erro de coluna detectado, possível necessidade de migração:', insertError.message);
-
-                            // Remover a coluna image_from_supabase que pode estar causando o erro
-                            const basicPosts = postsToInsert.map((post: any) => {
-                                const { image_from_supabase, ...basicPost } = post as InstagramPost & { image_from_supabase: boolean };
-                                return basicPost;
-                            });
-
-                            console.log('Tentando novamente sem a coluna image_from_supabase...');
-                            const { error: basicInsertError } = await supabase
-                                .from('instagram_posts')
-                                .insert(basicPosts);
-
-                            if (basicInsertError) {
-                                console.error('Erro ao inserir dados básicos:', basicInsertError);
-                                // Não interromper o fluxo caso a inserção falhe
-                            } else {
-                                console.log(`Dados básicos de ${basicPosts.length} posts salvos com sucesso`);
-                            }
-                        } else {
-                            console.error('Erro ao inserir posts:', insertError);
-                            // Não interromper o fluxo caso a inserção falhe
-                        }
+                        console.error('Erro ao inserir posts:', insertError);
                     } else {
-                        console.log(`${postsToInsert.length} posts salvos com sucesso no banco de dados`);
+                        console.log(`${postsToInsert.length} posts salvos com sucesso`);
                     }
                 }
             } catch (error) {
                 console.error('Erro ao salvar posts:', error);
-                // Continue with the profile data even if post saving fails
             }
         }
 
-        // Contabilizar quantas imagens foram salvas no Supabase
         const totalSupabaseImages = (profileImageFromSupabase ? 1 : 0) +
-            (profileData.latestPosts || []).filter((post: any) => post.supabase_url === true).length;
+            (profileData.latestPosts || []).filter((post: any) => post.image_from_supabase === true).length;
 
         const totalImages = 1 + (profileData.latestPosts?.length || 0);
 
@@ -614,7 +631,7 @@ export async function fetchScrapingResults(datasetId: string) {
             supabaseImageCount: totalSupabaseImages,
             totalImageCount: totalImages,
             success: true,
-            message: `Perfil do Instagram processado com sucesso: ${profileData.username}. ${totalSupabaseImages}/${totalImages} imagens salvas no Supabase.`
+            message: `Perfil processado: ${profileData.username}. ${totalSupabaseImages}/${totalImages} imagens salvas no Supabase.`
         };
 
     } catch (error: any) {
@@ -622,7 +639,7 @@ export async function fetchScrapingResults(datasetId: string) {
         return {
             success: false,
             error: error.message || 'Error fetching scraping results',
-            message: `Erro ao processar perfil do Instagram: ${error.message}`
+            message: `Erro ao processar perfil: ${error.message}`
         };
     }
 }
