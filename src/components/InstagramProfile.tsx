@@ -64,16 +64,16 @@ const InstagramProfile: React.FC<InstagramProfileProps> = ({ profile }) => {
                     {/* Textura e efeitos do background */}
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
                     <div className="absolute inset-0 backdrop-blur-sm bg-white/10"></div>
-                    
+
                     {/* Elementos decorativos */}
                     <div className="absolute top-6 right-6 w-16 h-16 rounded-full bg-white/20 backdrop-blur-md"></div>
                     <div className="absolute top-12 right-20 w-8 h-8 rounded-full bg-white/30 backdrop-blur-md"></div>
                 </div>
-                
+
                 {/* Container para foto + informações */}
                 <div className="flex flex-col px-6">
                     {/* Foto de perfil em container separado */}
-                    <div className="flex justify-start -mt-14 mb-4 relative z-10">
+                    <div className="flex justify-start -mt-14 mb-4 relative z-1">
                         <div className="p-1 rounded-full bg-[#9e46d3] shadow-xl">
                             {!imgError && profile.profile_pic_url ? (
                                 <img
@@ -93,7 +93,7 @@ const InstagramProfile: React.FC<InstagramProfileProps> = ({ profile }) => {
                             )}
                         </div>
                     </div>
-                    
+
                     {/* Informação do perfil */}
                     <div className="flex flex-col md:flex-row md:items-start justify-between mb-6">
                         <div className="transition-all duration-300 hover:translate-x-1">
@@ -155,7 +155,7 @@ const InstagramProfile: React.FC<InstagramProfileProps> = ({ profile }) => {
                                 <span className="text-xs text-gray-500 ml-2 mb-1">dos seguidores</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2 mt-3 overflow-hidden">
-                                <div className="bg-[#9e46d3] h-2 rounded-full transition-all duration-1000 ease-in-out" 
+                                <div className="bg-[#9e46d3] h-2 rounded-full transition-all duration-1000 ease-in-out"
                                     style={{ width: `${Math.min(100, engagementRate * 3)}%` }}>
                                 </div>
                             </div>
@@ -177,7 +177,7 @@ const InstagramProfile: React.FC<InstagramProfileProps> = ({ profile }) => {
                                 <span className="text-xs text-gray-500 ml-2 mb-1">/ 100</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2 mt-3 overflow-hidden">
-                                <div className="bg-[#9e46d3] h-2 rounded-full transition-all duration-1000 ease-in-out" 
+                                <div className="bg-[#9e46d3] h-2 rounded-full transition-all duration-1000 ease-in-out"
                                     style={{ width: `${profileHealth}%` }}>
                                 </div>
                             </div>
