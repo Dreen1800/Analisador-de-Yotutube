@@ -78,20 +78,20 @@ function generateUniqueFileName(originalUrl: string, prefix: string = ''): strin
         const url = new URL(originalUrl);
         const pathParts = url.pathname.split('/');
         const fileName = pathParts[pathParts.length - 1] || 'image';
-        
+
         // Remover parâmetros de query do nome do arquivo
         const cleanFileName = fileName.split('?')[0];
-        
+
         // Garantir que tem uma extensão
         const hasExtension = cleanFileName.includes('.');
         const finalFileName = hasExtension ? cleanFileName : `${cleanFileName}.jpg`;
-        
+
         // Adicionar timestamp para garantir unicidade
         const timestamp = Date.now();
         const nameParts = finalFileName.split('.');
         const extension = nameParts.pop();
         const name = nameParts.join('.');
-        
+
         return prefix ? `${prefix}/${name}_${timestamp}.${extension}` : `${name}_${timestamp}.${extension}`;
     } catch (error) {
         // Fallback se a URL for inválida
@@ -143,40 +143,15 @@ export async function downloadAndStoreImage(imageUrl: string, storagePath: strin
             console.log(`Download direto bem-sucedido. Tamanho: ${imageData.byteLength} bytes`);
 
         } catch (directError) {
-            console.log('Download direto falhou, tentando via Edge Function...');
-            
-            // Tentar usar a Edge Function como fallback
-            try {
-                const edgeFunctionResponse = await supabase.functions.invoke('download-instagram-image', {
-                    body: {
-                        imageUrl: imageUrl,
-                        storagePath: uniqueFileName,
-                        bucketName: INSTAGRAM_IMAGES_BUCKET
-                    }
-                });
-
-                if (edgeFunctionResponse.error) {
-                    throw new Error(`Edge Function error: ${edgeFunctionResponse.error.message}`);
-                }
-
-                if (edgeFunctionResponse.data?.success && edgeFunctionResponse.data?.publicUrl) {
-                    console.log(`Imagem salva via Edge Function: ${edgeFunctionResponse.data.publicUrl}`);
-                    return edgeFunctionResponse.data.publicUrl;
-                } else {
-                    throw new Error('Edge Function não retornou URL válida');
-                }
-
-            } catch (edgeError) {
-                console.error('Edge Function também falhou:', edgeError);
-                console.log('Usando URL de proxy como último recurso...');
-                return convertToProxyUrl(imageUrl);
-            }
+            console.log('Download direto falhou (CORS esperado), usando proxy local...');
+            // Pular Edge Function e ir direto para o proxy
+            return convertToProxyUrl(imageUrl);
         }
 
         // Se chegou até aqui, o download direto funcionou
         // Fazer upload para o Supabase Storage
         console.log(`Fazendo upload para o Supabase Storage...`);
-        
+
         const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
             .from(INSTAGRAM_IMAGES_BUCKET)
             .upload(uniqueFileName, imageData, {
@@ -442,10 +417,10 @@ export async function fetchScrapingResults(datasetId: string) {
             console.log(`Processando ${profileData.latestPosts.length} imagens de posts`);
 
             const CONCURRENT_DOWNLOADS = 3;
-            
+
             for (let i = 0; i < profileData.latestPosts.length; i += CONCURRENT_DOWNLOADS) {
                 const batch = profileData.latestPosts.slice(i, i + CONCURRENT_DOWNLOADS);
-                
+
                 const batchPromise = async () => {
                     const promises = batch.map(async (post: any, batchIndex: number) => {
                         const globalIndex = i + batchIndex;
