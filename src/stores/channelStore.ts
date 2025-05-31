@@ -211,19 +211,26 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
         .eq('channel_id', channelId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (analysisError) throw analysisError;
 
-      set({
-        currentChannel: channelData as Channel,
-        currentAnalysis: {
-          id: analysisData.id,
-          channel_id: analysisData.channel_id,
-          analysis_date: analysisData.created_at,
-          videos: analysisData.videos
-        }
-      });
+      if (analysisData) {
+        set({
+          currentChannel: channelData as Channel,
+          currentAnalysis: {
+            id: analysisData.id,
+            channel_id: analysisData.channel_id,
+            analysis_date: analysisData.created_at,
+            videos: analysisData.videos
+          }
+        });
+      } else {
+        set({
+          currentChannel: channelData as Channel,
+          currentAnalysis: null
+        });
+      }
     } catch (error) {
       set({ error: (error as Error).message });
     } finally {

@@ -66,13 +66,11 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
         .eq('channel_id', channelId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       
-      if (error) {
-        if (error.code !== 'PGRST116') { // No rows returned is not a real error
-          throw error;
-        }
-      } else {
+      if (error) throw error;
+      
+      if (data) {
         setAiAnalysis(data);
       }
     } catch (err) {
