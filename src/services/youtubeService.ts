@@ -1,10 +1,73 @@
 import axios from 'axios';
 import { useApiKeyStore } from '../stores/apiKeyStore';
 
+// YouTube API response types
+interface YouTubeSearchResponse {
+  items: Array<{
+    id: { videoId: string; channelId?: string };
+    snippet: {
+      title: string;
+      publishedAt: string;
+      thumbnails: {
+        default?: { url: string };
+        high?: { url: string };
+      };
+      customUrl?: string;
+    };
+  }>;
+  nextPageToken?: string;
+}
+
+interface YouTubeChannelResponse {
+  items: Array<{
+    id: string;
+    snippet: {
+      title: string;
+      description: string;
+      customUrl?: string;
+      thumbnails: {
+        high: { url: string };
+      };
+    };
+    statistics: {
+      subscriberCount: string;
+      videoCount: string;
+      viewCount: string;
+    };
+  }>;
+}
+
+interface YouTubeVideoResponse {
+  items: Array<{
+    id: string;
+    snippet: {
+      title: string;
+      publishedAt: string;
+      description?: string;
+      thumbnails: {
+        default?: { url: string };
+        high?: { url: string };
+      };
+    };
+    statistics?: {
+      viewCount?: string;
+      likeCount?: string;
+      commentCount?: string;
+    };
+    contentDetails?: {
+      duration?: string;
+    };
+  }>;
+}
+
 interface AnalysisOptions {
   maxVideos: number;
   sortBy: 'date' | 'views' | 'engagement';
   includeShorts: boolean;
+  dateFilter?: {
+    publishedAfter?: string; // ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
+    publishedBefore?: string; // ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
+  };
 }
 
 // Helper function to extract channel ID from URL
@@ -19,7 +82,7 @@ export const extractChannelId = async (url: string, apiKey: string) => {
 
   // Clean and normalize the URL
   const cleanUrl = url.trim().toLowerCase();
-  
+
   // Extract handle or identifier using more robust patterns
   const patterns = {
     channel: /youtube\.com\/channel\/([a-zA-Z0-9_-]+)/i,
@@ -108,7 +171,7 @@ const resolveChannelId = async (identifier: string, type: string | null, apiKey:
 
       if (searchResponse.data.items?.length > 0) {
         const channelId = searchResponse.data.items[0].id.channelId;
-        
+
         // Verify the channel exists and matches the handle/custom URL
         const verifyResponse = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
           headers,
@@ -126,8 +189,8 @@ const resolveChannelId = async (identifier: string, type: string | null, apiKey:
 
           // Check for exact match with handle or custom URL
           if (type === 'handle') {
-            if (customUrl === identifier.toLowerCase() || 
-                customUrl === `@${identifier.toLowerCase()}`) {
+            if (customUrl === identifier.toLowerCase() ||
+              customUrl === `@${identifier.toLowerCase()}`) {
               return channelId;
             }
           } else {
@@ -168,11 +231,11 @@ const resolveChannelId = async (identifier: string, type: string | null, apiKey:
           const channel = verifyResponse.data.items[0];
           const customUrl = channel.snippet?.customUrl?.toLowerCase();
           const title = channel.snippet?.title?.toLowerCase();
-          
+
           // Check for exact matches
           if (customUrl === identifier.toLowerCase() ||
-              customUrl === `@${identifier.toLowerCase()}` ||
-              title === identifier.toLowerCase()) {
+            customUrl === `@${identifier.toLowerCase()}` ||
+            title === identifier.toLowerCase()) {
             return channelId;
           }
         }
@@ -206,7 +269,7 @@ export const getChannelInfo = async (channelId: string, apiKey: string) => {
   };
 
   try {
-    const response = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
+    const response = await axios.get<YouTubeChannelResponse>('https://www.googleapis.com/youtube/v3/channels', {
       headers,
       params: {
         part: 'snippet,statistics',
@@ -214,11 +277,11 @@ export const getChannelInfo = async (channelId: string, apiKey: string) => {
         key: apiKey
       }
     });
-    
+
     if (!response.data.items || response.data.items.length === 0) {
       throw new Error('Channel not found');
     }
-    
+
     const channel = response.data.items[0];
     return {
       id: channel.id,
@@ -256,10 +319,10 @@ export const getChannelTopVideos = async (channelId: string, apiKey: string, opt
     const allVideos = [];
     let nextPageToken = undefined;
     let totalVideos = 0;
-    
+
     // Make multiple requests to get more videos (pagination)
     while (totalVideos < options.maxVideos) {
-      const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+      const response: { data: YouTubeSearchResponse } = await axios.get<YouTubeSearchResponse>('https://www.googleapis.com/youtube/v3/search', {
         headers,
         params: {
           part: 'snippet',
@@ -269,10 +332,12 @@ export const getChannelTopVideos = async (channelId: string, apiKey: string, opt
           type: 'video',
           pageToken: nextPageToken,
           key: apiKey,
-          videoDuration: options.includeShorts ? undefined : 'long' // Filter out shorts if not included
+          videoDuration: options.includeShorts ? undefined : 'long', // Filter out shorts if not included
+          publishedAfter: options.dateFilter?.publishedAfter,
+          publishedBefore: options.dateFilter?.publishedBefore
         }
       });
-      
+
       for (const item of response.data.items) {
         allVideos.push({
           video_id: item.id.videoId,
@@ -282,11 +347,11 @@ export const getChannelTopVideos = async (channelId: string, apiKey: string, opt
         });
         totalVideos++;
       }
-      
+
       nextPageToken = response.data.nextPageToken;
       if (!nextPageToken || totalVideos >= options.maxVideos) break;
     }
-    
+
     return allVideos;
   } catch (error: any) {
     if (error.response?.status === 403) {
@@ -313,12 +378,12 @@ export const getVideoDetails = async (videoIds: string[], apiKey: string, option
 
   try {
     const allMetrics = [];
-    
+
     // Process in batches of 50 (API limit)
     for (let i = 0; i < videoIds.length; i += 50) {
       const batch = videoIds.slice(i, i + 50);
-      
-      const response = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
+
+      const response = await axios.get<YouTubeVideoResponse>('https://www.googleapis.com/youtube/v3/videos', {
         headers,
         params: {
           part: 'statistics,contentDetails,snippet',
@@ -326,28 +391,28 @@ export const getVideoDetails = async (videoIds: string[], apiKey: string, option
           key: apiKey
         }
       });
-      
+
       for (const item of response.data.items) {
         // Extract and process duration
         const duration = item.contentDetails?.duration || '';
         const durationSeconds = parseDuration(duration);
         const durationFormatted = formatDuration(durationSeconds);
-        
+
         // Calculate basic metrics
         const viewCount = parseInt(item.statistics?.viewCount || '0');
         const likeCount = parseInt(item.statistics?.likeCount || '0');
         const commentCount = parseInt(item.statistics?.commentCount || '0');
-        
+
         // Calculate engagement rate
         let engagementRate = 0;
         if (viewCount > 0) {
           engagementRate = (likeCount + commentCount) / viewCount;
         }
-        
+
         // Calculate views per day
         const pubDateStr = item.snippet?.publishedAt || '';
         let viewsPerDay = 0;
-        
+
         if (pubDateStr) {
           try {
             const pubDate = new Date(pubDateStr);
@@ -358,7 +423,7 @@ export const getVideoDetails = async (videoIds: string[], apiKey: string, option
             console.error('Error calculating views per day:', e);
           }
         }
-        
+
         allMetrics.push({
           video_id: item.id,
           title: item.snippet.title,
@@ -375,7 +440,7 @@ export const getVideoDetails = async (videoIds: string[], apiKey: string, option
         });
       }
     }
-    
+
     // Sort based on options
     return allMetrics.sort((a, b) => {
       if (options.sortBy === 'date') {
@@ -401,24 +466,24 @@ export const getVideoDetails = async (videoIds: string[], apiKey: string, option
 // Helper function to parse ISO 8601 duration to seconds
 export const parseDuration = (durationStr: string): number => {
   const match = durationStr.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  
+
   if (!match) return 0;
-  
+
   const hours = parseInt(match[1] || '0');
   const minutes = parseInt(match[2] || '0');
   const seconds = parseInt(match[3] || '0');
-  
+
   return hours * 3600 + minutes * 60 + seconds;
 };
 
 // Helper function to format seconds to readable duration
 export const formatDuration = (seconds: number): string => {
   if (seconds === 0) return 'N/A';
-  
+
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const remainingSeconds = seconds % 60;
-  
+
   if (hours > 0) {
     return `${hours}h ${minutes}m ${remainingSeconds}s`;
   } else {
@@ -426,11 +491,89 @@ export const formatDuration = (seconds: number): string => {
   }
 };
 
+// Helper functions for date filtering
+export const createDateFilter = {
+  // Filter videos from the last N days
+  lastDays: (days: number) => {
+    const now = new Date();
+    const publishedAfter = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+    return {
+      publishedAfter: publishedAfter.toISOString()
+    };
+  },
+
+  // Filter videos from the last N months
+  lastMonths: (months: number) => {
+    const now = new Date();
+    const publishedAfter = new Date(now.getFullYear(), now.getMonth() - months, now.getDate());
+    return {
+      publishedAfter: publishedAfter.toISOString()
+    };
+  },
+
+  // Filter videos from the last N years
+  lastYears: (years: number) => {
+    const now = new Date();
+    const publishedAfter = new Date(now.getFullYear() - years, now.getMonth(), now.getDate());
+    return {
+      publishedAfter: publishedAfter.toISOString()
+    };
+  },
+
+  // Filter videos between two specific dates
+  between: (startDate: Date, endDate: Date) => {
+    return {
+      publishedAfter: startDate.toISOString(),
+      publishedBefore: endDate.toISOString()
+    };
+  },
+
+  // Filter videos published after a specific date
+  after: (date: Date) => {
+    return {
+      publishedAfter: date.toISOString()
+    };
+  },
+
+  // Filter videos published before a specific date
+  before: (date: Date) => {
+    return {
+      publishedBefore: date.toISOString()
+    };
+  },
+
+  // Predefined common filters
+  thisYear: () => {
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    return {
+      publishedAfter: startOfYear.toISOString()
+    };
+  },
+
+  thisMonth: () => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return {
+      publishedAfter: startOfMonth.toISOString()
+    };
+  },
+
+  thisWeek: () => {
+    const now = new Date();
+    const startOfWeek = new Date(now.getTime() - (now.getDay() * 24 * 60 * 60 * 1000));
+    startOfWeek.setHours(0, 0, 0, 0);
+    return {
+      publishedAfter: startOfWeek.toISOString()
+    };
+  }
+};
+
 // Main function to fetch channel data with all metrics
 export const fetchChannelData = async (channelUrl: string, options: AnalysisOptions) => {
   // Get API key from store
   const apiKey = useApiKeyStore.getState().currentKey?.key;
-  
+
   if (!apiKey) {
     throw new Error('No YouTube API key available. Please add an API key in the API Keys section.');
   }
@@ -438,17 +581,17 @@ export const fetchChannelData = async (channelUrl: string, options: AnalysisOpti
   try {
     // Extract channel ID using the improved method
     const channelId = await extractChannelId(channelUrl, apiKey);
-    
+
     // Get channel info
     const channelInfo = await getChannelInfo(channelId, apiKey);
-    
+
     // Get top videos with options
     const videos = await getChannelTopVideos(channelId, apiKey, options);
-    
+
     // Get detailed metrics for videos
     const videoIds = videos.map(video => video.video_id);
     const videoDetails = await getVideoDetails(videoIds, apiKey, options);
-    
+
     // Update API key usage count
     const currentKey = useApiKeyStore.getState().currentKey;
     if (currentKey) {
@@ -456,7 +599,7 @@ export const fetchChannelData = async (channelUrl: string, options: AnalysisOpti
         usage_count: currentKey.usage_count + 1
       });
     }
-    
+
     return {
       channelInfo,
       videos: videoDetails
@@ -471,16 +614,16 @@ export const generateCSV = (videos: any[]): string => {
   if (!videos || videos.length === 0) {
     return '';
   }
-  
+
   // Define headers
   const headers = [
-    'Title', 'Video ID', 'Published At', 'Views', 'Likes', 
+    'Title', 'Video ID', 'Published At', 'Views', 'Likes',
     'Comments', 'Engagement Rate', 'Views Per Day', 'Duration'
   ];
-  
+
   // Create CSV content
   let csv = headers.join(',') + '\n';
-  
+
   videos.forEach(video => {
     const row = [
       `"${video.title.replace(/"/g, '""')}"`,
@@ -495,7 +638,7 @@ export const generateCSV = (videos: any[]): string => {
     ];
     csv += row.join(',') + '\n';
   });
-  
+
   return csv;
 };
 
