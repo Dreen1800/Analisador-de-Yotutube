@@ -47,6 +47,12 @@ interface ScrapingJob {
     error?: string;
 }
 
+interface ScrapingOptions {
+    postsLimit?: number;
+    checkInterval?: number;
+    maxTimeout?: number;
+}
+
 interface InstagramState {
     profiles: InstagramProfile[];
     currentProfile: InstagramProfile | null;
@@ -55,7 +61,7 @@ interface InstagramState {
     isLoading: boolean;
     error: string | null;
     fetchProfiles: () => Promise<void>;
-    scrapeProfile: (username: string) => Promise<void>;
+    scrapeProfile: (username: string, options?: ScrapingOptions) => Promise<void>;
     setCurrentProfile: (profile: InstagramProfile) => void;
     fetchPosts: (profileId: string) => Promise<void>;
     checkActiveScrapingJobs: () => Promise<void>;
@@ -81,7 +87,6 @@ export const useInstagramStore = create<InstagramState>((set, get) => ({
 
             if (error) throw error;
 
-            // Map database fields to store fields
             const profiles = data?.map(profile => ({
                 id: profile.id,
                 instagram_id: profile.instagram_id,
@@ -103,13 +108,15 @@ export const useInstagramStore = create<InstagramState>((set, get) => ({
         }
     },
 
-    scrapeProfile: async (username) => {
+    scrapeProfile: async (username: string, options?: ScrapingOptions) => {
         set({ isLoading: true, error: null });
         try {
-            // Start the scraping process
-            const result = await scrapeInstagramProfile(username);
+            const result = await scrapeInstagramProfile(username, {
+                postsLimit: options?.postsLimit || 100,
+                checkInterval: options?.checkInterval || 5000,
+                maxTimeout: options?.maxTimeout || 600000
+            });
 
-            // Add the job to active scraping jobs
             set(state => ({
                 activeScrapingJobs: [
                     ...state.activeScrapingJobs,
@@ -123,8 +130,8 @@ export const useInstagramStore = create<InstagramState>((set, get) => ({
                 isLoading: false
             }));
 
-            // Start checking status (poll every 15 seconds initially)
-            setTimeout(() => get().checkActiveScrapingJobs(), 15000);
+            setTimeout(() => get().checkActiveScrapingJobs(), 
+                options?.checkInterval || 5000);
 
         } catch (error: any) {
             set({ error: error.message, isLoading: false });
@@ -146,7 +153,6 @@ export const useInstagramStore = create<InstagramState>((set, get) => ({
 
             if (error) throw error;
 
-            // Map database fields to store fields
             const posts = data?.map(post => ({
                 id: post.id,
                 profile_id: post.profile_id,
@@ -179,7 +185,6 @@ export const useInstagramStore = create<InstagramState>((set, get) => ({
         if (activeScrapingJobs.length === 0) return;
 
         try {
-            // Check each running job
             const updatedJobs = [...activeScrapingJobs];
             let anyRunning = false;
 
@@ -192,10 +197,8 @@ export const useInstagramStore = create<InstagramState>((set, get) => ({
                         const status = await checkScrapingStatus(job.runId);
                         console.log(`Current status: ${status.status}, Dataset ID: ${status.defaultDatasetId || 'Not available yet'}`);
 
-                        // Normalize status comparison to handle response variations
                         const normalizedStatus = status.status?.toUpperCase();
 
-                        // Even if still running, save the dataset ID if available
                         if (status.defaultDatasetId && !updatedJobs[i].datasetId) {
                             updatedJobs[i] = {
                                 ...updatedJobs[i],
@@ -212,7 +215,6 @@ export const useInstagramStore = create<InstagramState>((set, get) => ({
                                 datasetId: status.defaultDatasetId || updatedJobs[i].datasetId
                             };
 
-                            // Process this job to fetch results
                             if (updatedJobs[i].datasetId) {
                                 await get().processFinishedScrapingJob(updatedJobs[i]);
                             } else {
@@ -239,22 +241,18 @@ export const useInstagramStore = create<InstagramState>((set, get) => ({
                             normalizedStatus === 'READY' ||
                             normalizedStatus === 'RUNNING'
                         ) {
-                            // Still running
                             console.log(`Job ${job.runId} is still running with status: ${normalizedStatus}`);
                             anyRunning = true;
 
-                            // If we have dataset ID already, check if it has data
                             if (updatedJobs[i].datasetId) {
                                 console.log(`Job is still running, but dataset ID exists: ${updatedJobs[i].datasetId}. Will try to process available data.`);
 
                                 try {
-                                    // Try to process available data, even if job is still running
                                     await get().processFinishedScrapingJob({
                                         ...updatedJobs[i],
-                                        status: 'succeeded'  // Temporarily mark as succeeded for processing
+                                        status: 'succeeded'
                                     });
 
-                                    // After processing, mark job as completed
                                     updatedJobs[i] = {
                                         ...updatedJobs[i],
                                         status: 'succeeded',
@@ -263,16 +261,13 @@ export const useInstagramStore = create<InstagramState>((set, get) => ({
                                     anyRunning = false;
                                 } catch (error: any) {
                                     console.log(`Tried to process partial data but failed: ${error.message}. Will continue waiting.`);
-                                    // Keep the job as running if processing fails
                                 }
                             }
                         } else {
-                            // Unknown status
                             console.log(`Job ${job.runId} has unknown status: ${normalizedStatus}`);
                             anyRunning = true;
                         }
                     } catch (error: any) {
-                        // Error checking status, mark as failed
                         console.error(`Error checking status for job ${job.runId}:`, error);
                         updatedJobs[i] = {
                             ...job,
@@ -284,10 +279,8 @@ export const useInstagramStore = create<InstagramState>((set, get) => ({
                 }
             }
 
-            // Update store with new job statuses
             set({ activeScrapingJobs: updatedJobs });
 
-            // If any jobs are still running, check again in 15 seconds
             if (anyRunning) {
                 console.log("Some jobs are still running, scheduling another check in 15 seconds");
                 setTimeout(() => get().checkActiveScrapingJobs(), 15000);
@@ -308,38 +301,30 @@ export const useInstagramStore = create<InstagramState>((set, get) => ({
         console.log(`Processing finished job ${job.runId} with dataset ${job.datasetId}`);
 
         try {
-            // Set temporary loading state
             set(state => ({
                 activeScrapingJobs: state.activeScrapingJobs.map(j =>
                     j.runId === job.runId ? { ...j, status: 'running', error: 'Processing data...' } : j
                 )
             }));
 
-            // Fetch and save the results
             const result = await fetchScrapingResults(job.datasetId);
             console.log(`Successfully processed job for ${job.profileUsername}`);
 
-            // Update profiles after fetching results
             await get().fetchProfiles();
 
-            // If we have a current profile and no posts, and this job was for that profile,
-            // load the posts for it
             const { currentProfile } = get();
             if (currentProfile && currentProfile.username === job.profileUsername) {
                 await get().fetchPosts(currentProfile.id);
             }
 
-            // Remove this job from active jobs
             set(state => ({
                 activeScrapingJobs: state.activeScrapingJobs.filter(j => j.runId !== job.runId)
             }));
 
-            // Show success message
             set({ error: null });
         } catch (error: any) {
             console.error('Error processing scraping results:', error);
 
-            // Mark job as failed
             set(state => ({
                 activeScrapingJobs: state.activeScrapingJobs.map(j =>
                     j.runId === job.runId
@@ -421,10 +406,6 @@ Você pode encontrar esta chave no painel do Supabase:
 
             if (!deleteSuccess) {
                 console.log('Tentando método alternativo de exclusão via RPC (se configurado)...');
-                // Esta parte depende da sua função RPC 'admin_delete_profile'
-                // const { error: rpcError } = await supabase.rpc('admin_delete_profile', { profile_id_to_delete: profileId });
-                // if (rpcError) throw rpcError;
-                // deleteSuccess = true; 
                 if (!deleteSuccess) throw new Error('Falha na exclusão padrão e método RPC não implementado/executado aqui.');
             }
 
@@ -448,4 +429,4 @@ Você pode encontrar esta chave no painel do Supabase:
             });
         }
     }
-})); 
+}));
