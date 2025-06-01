@@ -27,6 +27,37 @@ const getApifyKey = async (): Promise<string> => {
   }
 };
 
+// Function to proxy Instagram image URLs through our server
+export function getProxiedImageUrl(originalUrl: string): string {
+  // If the URL is already a Supabase storage URL or local proxy URL, return it as is
+  if (
+    originalUrl.includes('supabase.co') ||
+    originalUrl.startsWith('/instagram-img-proxy/')
+  ) {
+    return originalUrl;
+  }
+
+  // Check if the URL is from Instagram's CDN domains
+  const instagramDomains = [
+    'scontent.cdninstagram.com',
+    'scontent-',
+    'instagram.com',
+    'fbcdn.net'
+  ];
+
+  const isInstagramUrl = instagramDomains.some(domain => 
+    originalUrl.includes(domain)
+  );
+
+  if (!isInstagramUrl) {
+    return originalUrl;
+  }
+
+  // Create a proxy URL by encoding the original URL
+  const encodedUrl = encodeURIComponent(originalUrl);
+  return `/instagram-img-proxy/${encodedUrl}`;
+}
+
 // Start scraping process
 export async function scrapeInstagramProfile(username: string, options: ScrapingOptions = {}) {
   try {
