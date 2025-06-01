@@ -25,208 +25,11 @@ interface InstagramPost {
     image_from_supabase?: boolean;
 }
 
-// Função para verificar se o bucket existe
-async function ensureImageBucketExists(): Promise<boolean> {
-    try {
-        console.log('Verificando se o bucket existe...');
-
-        const { data, error } = await supabaseAdmin.storage
-            .from(INSTAGRAM_IMAGES_BUCKET)
-            .list('', { limit: 1 });
-
-        if (!error) {
-            console.log(`Acesso ao bucket ${INSTAGRAM_IMAGES_BUCKET} bem-sucedido.`);
-            return true;
-        }
-
-        if (error.message && (
-            error.message.includes('does not exist') ||
-            error.message.includes('não existe')
-        )) {
-            console.log(`Bucket ${INSTAGRAM_IMAGES_BUCKET} não encontrado. Tentando criar...`);
-
-            try {
-                const { error: createError } = await supabaseAdmin.storage.createBucket(
-                    INSTAGRAM_IMAGES_BUCKET,
-                    { public: true }
-                );
-
-                if (createError) {
-                    console.error('Erro ao criar bucket:', createError);
-                    return false;
-                }
-
-                console.log(`Bucket ${INSTAGRAM_IMAGES_BUCKET} criado com sucesso!`);
-                return true;
-            } catch (createBucketError) {
-                console.error('Erro ao tentar criar bucket:', createBucketError);
-                return false;
-            }
-        } else {
-            console.error(`Erro de acesso ao bucket: ${error.message}`);
-            return false;
-        }
-    } catch (error) {
-        console.error('Erro ao verificar bucket:', error);
-        return false;
-    }
-}
-
-// Função para gerar um nome de arquivo único
-function generateUniqueFileName(originalUrl: string, prefix: string = ''): string {
-    try {
-        const url = new URL(originalUrl);
-        const pathParts = url.pathname.split('/');
-        const fileName = pathParts[pathParts.length - 1] || 'image';
-
-        // Remover parâmetros de query do nome do arquivo
-        const cleanFileName = fileName.split('?')[0];
-
-        // Garantir que tem uma extensão
-        const hasExtension = cleanFileName.includes('.');
-        const finalFileName = hasExtension ? cleanFileName : `${cleanFileName}.jpg`;
-
-        // Adicionar timestamp para garantir unicidade
-        const timestamp = Date.now();
-        const nameParts = finalFileName.split('.');
-        const extension = nameParts.pop();
-        const name = nameParts.join('.');
-
-        return prefix ? `${prefix}/${name}_${timestamp}.${extension}` : `${name}_${timestamp}.${extension}`;
-    } catch (error) {
-        // Fallback se a URL for inválida
-        const timestamp = Date.now();
-        return prefix ? `${prefix}/image_${timestamp}.jpg` : `image_${timestamp}.jpg`;
-    }
-}
-
-// Função principal para baixar e armazenar imagens
-export async function downloadAndStoreImage(imageUrl: string, storagePath: string): Promise<string | null> {
-    if (!imageUrl || (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://'))) {
-        console.warn('URL inválida:', imageUrl);
-        return imageUrl;
-    }
-
-    try {
-        // Verificar se o bucket existe antes de tentar fazer upload
-        const bucketExists = await ensureImageBucketExists();
-        if (!bucketExists) {
-            console.warn('Bucket não disponível. Usando URL de proxy como fallback.');
-            return convertToProxyUrl(imageUrl);
-        }
-
-        console.log(`Iniciando download da imagem: ${imageUrl}`);
-
-        // Gerar nome único para o arquivo
-        const uniqueFileName = generateUniqueFileName(imageUrl, storagePath);
-        console.log(`Nome do arquivo gerado: ${uniqueFileName}`);
-
-        // Tentar baixar a imagem diretamente primeiro
-        let imageData: ArrayBuffer;
-        let contentType = 'image/jpeg';
-
-        try {
-            const response = await fetch(imageUrl, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                    'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-                    'Referer': 'https://www.instagram.com/',
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(`Erro HTTP: ${response.status}`);
-            }
-
-            imageData = await response.arrayBuffer();
-            contentType = response.headers.get('content-type') || 'image/jpeg';
-            console.log(`Download direto bem-sucedido. Tamanho: ${imageData.byteLength} bytes`);
-
-        } catch (directError) {
-            console.log('Download direto falhou (CORS esperado), usando proxy local...');
-            // Pular Edge Function e ir direto para o proxy
-            return convertToProxyUrl(imageUrl);
-        }
-
-        // Se chegou até aqui, o download direto funcionou
-        // Fazer upload para o Supabase Storage
-        console.log(`Fazendo upload para o Supabase Storage...`);
-
-        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-            .from(INSTAGRAM_IMAGES_BUCKET)
-            .upload(uniqueFileName, imageData, {
-                contentType: contentType,
-                upsert: true,
-                cacheControl: '3600',
-            });
-
-        if (uploadError) {
-            console.error('Erro no upload:', uploadError);
-            throw uploadError;
-        }
-
-        // Obter URL pública
-        const { data: urlData } = supabaseAdmin.storage
-            .from(INSTAGRAM_IMAGES_BUCKET)
-            .getPublicUrl(uniqueFileName);
-
-        if (!urlData.publicUrl) {
-            throw new Error('Não foi possível obter URL pública');
-        }
-
-        console.log(`Imagem salva com sucesso: ${urlData.publicUrl}`);
-        return urlData.publicUrl;
-
-    } catch (error) {
-        console.error(`Erro ao processar imagem ${imageUrl}:`, error);
-        // Como fallback, retornar URL de proxy
-        return convertToProxyUrl(imageUrl);
-    }
-}
-
-// Função para converter URLs do Instagram para proxy local
-function convertToProxyUrl(imageUrl: string): string {
-    if (!imageUrl || !imageUrl.startsWith('http')) return '';
-
-    if (imageUrl.includes('instagram.com') ||
-        imageUrl.includes('cdninstagram') ||
-        imageUrl.includes('fbcdn.net')) {
-
-        try {
-            const urlParts = new URL(imageUrl);
-            const path = urlParts.pathname + urlParts.search;
-            return `/instagram-img-proxy${path}`;
-        } catch (error) {
-            console.error('Erro ao processar URL do Instagram:', error);
-            return imageUrl;
-        }
-    }
-
-    return imageUrl;
-}
-
-// Função para componentes verificarem se a URL é do Supabase
-export function getProxiedImageUrl(imageUrl: string): string {
-    if (!imageUrl) return '';
-
-    // Se já for uma URL do Supabase Storage, retornar como está
-    if (imageUrl.includes('supabase') || imageUrl.includes('/storage/v1/')) {
-        return imageUrl;
-    }
-
-    // Se já for uma URL de proxy local, retornar como está
-    if (imageUrl.startsWith('/instagram-img-proxy')) {
-        return imageUrl;
-    }
-
-    // Para URLs externas do Instagram, usar o proxy
-    if (imageUrl.includes('instagram.com') ||
-        imageUrl.includes('cdninstagram.com') ||
-        imageUrl.includes('fbcdn.net')) {
-        return convertToProxyUrl(imageUrl);
-    }
-
-    return imageUrl;
+// Interface para opções de scraping
+interface ScrapingOptions {
+    postsLimit?: number;
+    checkInterval?: number; // em milissegundos
+    maxTimeout?: number; // em milissegundos
 }
 
 // Get the API key from Supabase
@@ -248,37 +51,21 @@ const getApifyKey = async (): Promise<string> => {
     }
 };
 
-// Helper function to get the best possible profile image URL
-const getBestProfileImageUrl = (profileData: any): string => {
-    const possibleUrls = [
-        profileData.profilePicUrlHD,
-        profileData.profilePicUrl,
-        profileData.profile_pic_url_hd,
-        profileData.profile_pic_url
-    ];
-
-    for (const url of possibleUrls) {
-        if (url && typeof url === 'string' && url.trim() !== '') {
-            if (!url.startsWith('http')) {
-                return `https://${url}`;
-            }
-            return url;
-        }
-    }
-
-    return '';
-};
-
-export async function scrapeInstagramProfile(username: string) {
+export async function scrapeInstagramProfile(username: string, options: ScrapingOptions = {}) {
     try {
         const apifyToken = await getApifyKey();
+        const {
+            postsLimit = 100,
+            checkInterval = 5000, // 5 segundos
+            maxTimeout = 600000 // 10 minutos
+        } = options;
 
         const runResponse = await axios.post(
             `https://api.apify.com/v2/acts/apify~instagram-scraper/runs?token=${apifyToken}`,
             {
                 directUrls: [`https://www.instagram.com/${username}`],
                 resultsType: 'details',
-                resultsLimit: 100
+                resultsLimit: postsLimit
             },
             {
                 headers: {
@@ -297,7 +84,11 @@ export async function scrapeInstagramProfile(username: string) {
         return {
             status: 'started',
             runId,
-            message: 'Instagram scraping job started. This may take several minutes to complete.'
+            message: 'Instagram scraping job started. This may take several minutes to complete.',
+            options: {
+                checkInterval,
+                maxTimeout
+            }
         };
 
     } catch (error: any) {
@@ -325,8 +116,6 @@ export async function checkScrapingStatus(runId: string) {
             throw new Error('Failed to get scraping status');
         }
 
-        console.log('Status response:', JSON.stringify(statusResponse.data, null, 2));
-
         const defaultDatasetId = statusResponse.data.data?.defaultDatasetId ||
             statusResponse.data.defaultDatasetId;
 
@@ -345,6 +134,27 @@ export async function checkScrapingStatus(runId: string) {
         throw new Error(error.message || 'Error checking scraping status');
     }
 }
+
+// Helper function to get the best possible profile image URL
+const getBestProfileImageUrl = (profileData: any): string => {
+    const possibleUrls = [
+        profileData.profilePicUrlHD,
+        profileData.profilePicUrl,
+        profileData.profile_pic_url_hd,
+        profileData.profile_pic_url
+    ];
+
+    for (const url of possibleUrls) {
+        if (url && typeof url === 'string' && url.trim() !== '') {
+            if (!url.startsWith('http')) {
+                return `https://${url}`;
+            }
+            return url;
+        }
+    }
+
+    return '';
+};
 
 async function createSafePostObject(post: any, profileId: string): Promise<InstagramPost> {
     const basePost: InstagramPost = {
