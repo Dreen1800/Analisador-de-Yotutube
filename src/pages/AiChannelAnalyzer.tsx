@@ -65,7 +65,6 @@ const AiChannelAnalyzer = () => {
   const { getMainChannel } = useChannelStore();
   const navigate = useNavigate();
 
-  // Fetch user channels and set main channel
   useEffect(() => {
     fetchMainChannel();
   }, []);
@@ -73,7 +72,6 @@ const AiChannelAnalyzer = () => {
   const fetchMainChannel = async () => {
     setIsLoadingChannels(true);
     try {
-      // Get all channels first to populate userChannels state
       const { data, error } = await supabase
         .from('channels')
         .select('*')
@@ -83,24 +81,19 @@ const AiChannelAnalyzer = () => {
 
       setUserChannels(data || []);
 
-      // Get main channel
       const mainChannel = await getMainChannel();
 
       if (mainChannel) {
         setSelectedChannel(mainChannel);
-        // Fetch data for this channel immediately
         fetchCompetitors(mainChannel.channel_id);
         fetchExistingAnalysis(mainChannel.channel_id);
         fetchVideoData(mainChannel.channel_id);
       } else if (data && data.length > 0) {
-        // If no main channel but channels exist, use the first one
         setSelectedChannel(data[0]);
-        // Fetch data for this channel immediately
         fetchCompetitors(data[0].channel_id);
         fetchExistingAnalysis(data[0].channel_id);
         fetchVideoData(data[0].channel_id);
       } else {
-        // No channels at all
         setError('Você precisa adicionar um canal primeiro para usar o analisador AI.');
       }
     } catch (err) {
@@ -136,10 +129,8 @@ const AiChannelAnalyzer = () => {
         .limit(1)
         .maybeSingle();
 
-      if (error) {
-        throw error;
-      }
-
+      if (error) throw error;
+      
       if (data) {
         setAiAnalysis(data);
       }
@@ -156,11 +147,11 @@ const AiChannelAnalyzer = () => {
         .eq('channel_id', channelId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .single();
 
       if (error) throw error;
 
-      setVideoData(data?.videos || []);
+      setVideoData(data.videos || []);
     } catch (err) {
       console.error('Error fetching video data:', err);
       setVideoData([]);
@@ -175,18 +166,15 @@ const AiChannelAnalyzer = () => {
     setError(null);
 
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Get the first YouTube API key
       if (apiKeys.length === 0) {
         throw new Error('No YouTube API key found');
       }
 
       const youtubeApiKey = apiKeys[0].key;
 
-      // Extract channel ID or handle from URL
       const patterns = {
         channel: /youtube\.com\/channel\/([a-zA-Z0-9_-]+)/i,
         custom: /youtube\.com\/c\/([^\/\s?&]+)/i,
@@ -198,7 +186,6 @@ const AiChannelAnalyzer = () => {
       let competitor_id = '';
       let searchTerm = '';
 
-      // Try to match direct channel ID first
       const channelMatch = competitorUrl.match(patterns.channel);
       if (channelMatch) {
         competitor_id = channelMatch[1];
@@ -211,13 +198,10 @@ const AiChannelAnalyzer = () => {
       } else if (competitorUrl.match(patterns.handleOnly)) {
         searchTerm = competitorUrl.match(patterns.handleOnly)![1];
       } else {
-        // Assume it's a search term if no pattern matches
         searchTerm = competitorUrl;
       }
 
-      // If we have a direct ID, use it
       if (!competitor_id && searchTerm) {
-        // Otherwise, search for the channel
         const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
           params: {
             part: 'snippet',
@@ -235,7 +219,6 @@ const AiChannelAnalyzer = () => {
         }
       }
 
-      // Get channel details
       const channelResponse = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
         params: {
           part: 'snippet',
@@ -250,7 +233,6 @@ const AiChannelAnalyzer = () => {
 
       const channelDetails = channelResponse.data.items[0];
 
-      // Add the competitor to the database
       const { data, error } = await supabase
         .from('competitors')
         .insert([
@@ -265,7 +247,6 @@ const AiChannelAnalyzer = () => {
 
       if (error) throw error;
 
-      // Update the competitors list
       setCompetitors([...(data as Competitor[]), ...competitors]);
       setCompetitorUrl('');
     } catch (err) {
@@ -284,7 +265,6 @@ const AiChannelAnalyzer = () => {
 
       if (error) throw error;
 
-      // Update the competitors list
       setCompetitors(competitors.filter(comp => comp.id !== id));
     } catch (err) {
       console.error('Error deleting competitor:', err);
@@ -292,7 +272,6 @@ const AiChannelAnalyzer = () => {
   };
 
   const generateAiAnalysis = async () => {
-    // Use OpenAI key from store if available, otherwise use the one from the input
     const openaiApiKey = currentOpenAIKey?.key || '';
 
     if (!openaiApiKey) {
@@ -310,7 +289,6 @@ const AiChannelAnalyzer = () => {
     setShowApiKeyError(false);
 
     try {
-      // Get videos from main channel
       let ownChannelData = {
         videos: videoData.map(video => ({
           title: video.title,
@@ -320,11 +298,9 @@ const AiChannelAnalyzer = () => {
         }))
       };
 
-      // Get list of channels to analyze
       let channelsToAnalyze = [];
 
       if (analyzeAllChannels) {
-        // Use all channels as competitors except the selected one
         channelsToAnalyze = userChannels
           .filter(channel => channel.channel_id !== selectedChannel.channel_id)
           .map(channel => ({
@@ -335,15 +311,12 @@ const AiChannelAnalyzer = () => {
           }));
       }
 
-      // Merge with manually added competitors
       const allCompetitors = [...channelsToAnalyze, ...competitors];
 
-      // Get competitor video data
       const competitorVideos = await Promise.all(
         allCompetitors.map(async (competitor) => {
           const youtubeApiKey = apiKeys[0].key;
 
-          // Get videos from competitor
           const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
             params: {
               part: 'snippet',
@@ -357,7 +330,6 @@ const AiChannelAnalyzer = () => {
 
           const videoIds = response.data.items.map((item: any) => item.id.videoId);
 
-          // Get detailed video info
           const videoDetailsResponse = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
             params: {
               part: 'snippet,statistics',
@@ -379,13 +351,11 @@ const AiChannelAnalyzer = () => {
         })
       );
 
-      // Format data for the OpenAI API request
       const promptData = {
         competitors: competitorVideos,
         ownChannel: ownChannelData
       };
 
-      // Call OpenAI API
       const openAiResponse = await axios.post(
         'https://api.openai.com/v1/chat/completions',
         {
@@ -415,12 +385,10 @@ const AiChannelAnalyzer = () => {
         }
       );
 
-      // Parse and validate the response
       let analysisResult;
       try {
         const content = openAiResponse.data.choices[0].message.content;
 
-        // Try to extract the JSON from the response
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           analysisResult = JSON.parse(jsonMatch[0]);
@@ -428,13 +396,11 @@ const AiChannelAnalyzer = () => {
           throw new Error('JSON format not found in response');
         }
 
-        // Check if all required fields exist
         if (!analysisResult.trends || !analysisResult.patterns ||
           !analysisResult.viralPotential || !analysisResult.contentIdeas) {
           throw new Error('Incomplete AI response');
         }
 
-        // Ensure all fields are arrays
         analysisResult.trends = Array.isArray(analysisResult.trends) ? analysisResult.trends : [];
         analysisResult.patterns = Array.isArray(analysisResult.patterns) ? analysisResult.patterns : [];
         analysisResult.viralPotential = Array.isArray(analysisResult.viralPotential) ? analysisResult.viralPotential : [];
@@ -444,11 +410,9 @@ const AiChannelAnalyzer = () => {
         throw new Error('Error processing AI response');
       }
 
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Save the analysis to the database
       const { data, error } = await supabase
         .from('ai_analyses')
         .insert([
@@ -462,7 +426,6 @@ const AiChannelAnalyzer = () => {
 
       if (error) throw error;
 
-      // Update the state with the new analysis
       setAiAnalysis(data[0] as AiAnalysisResult);
     } catch (err) {
       console.error('Complete error:', err);
@@ -579,7 +542,6 @@ const AiChannelAnalyzer = () => {
               </label>
             </div>
 
-            {/* Competitor Management */}
             <div className="mb-8">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Gerir concorrentes</h3>
 
@@ -658,7 +620,6 @@ const AiChannelAnalyzer = () => {
               </div>
             </div>
 
-            {/* Generate Analysis Button */}
             <div className="mb-4">
               <button
                 onClick={generateAiAnalysis}
@@ -684,7 +645,6 @@ const AiChannelAnalyzer = () => {
             </div>
           </div>
 
-          {/* Analysis Results */}
           {aiAnalysis && (
             <div className="p-6 bg-gradient-to-r from-purple-50 to-purple-50">
               <div className="mb-4">

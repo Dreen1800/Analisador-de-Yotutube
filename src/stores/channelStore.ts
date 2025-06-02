@@ -217,15 +217,22 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
       if (analysisError) throw analysisError;
       if (!analysisData) throw new Error('No analysis found for this channel');
 
-      set({
-        currentChannel: channelData as Channel,
-        currentAnalysis: {
-          id: analysisData.id,
-          channel_id: analysisData.channel_id,
-          analysis_date: analysisData.created_at,
-          videos: analysisData.videos
-        }
-      });
+      if (analysisData) {
+        set({
+          currentChannel: channelData as Channel,
+          currentAnalysis: {
+            id: analysisData.id,
+            channel_id: analysisData.channel_id,
+            analysis_date: analysisData.created_at,
+            videos: analysisData.videos
+          }
+        });
+      } else {
+        set({
+          currentChannel: channelData as Channel,
+          currentAnalysis: null
+        });
+      }
     } catch (error) {
       set({ error: (error as Error).message });
     } finally {

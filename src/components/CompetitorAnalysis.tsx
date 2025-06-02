@@ -49,9 +49,9 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
         .from('competitors')
         .select('*')
         .eq('parent_channel_id', channelId);
-
+      
       if (error) throw error;
-
+      
       setCompetitors(data || []);
     } catch (err) {
       console.error('Erro ao buscar concorrentes:', err);
@@ -67,11 +67,9 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-
-      if (error) {
-        throw error;
-      }
-
+      
+      if (error) throw error;
+      
       if (data) {
         setAiAnalysis(data);
       }
@@ -83,22 +81,22 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
   const handleAddCompetitor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!competitorUrl) return;
-
+    
     setIsAddingCompetitor(true);
     setError(null);
-
+    
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
-
+      
       // Get the first YouTube API key
       if (apiKeys.length === 0) {
         throw new Error('Nenhuma chave de API do YouTube encontrada');
       }
-
+      
       const youtubeApiKey = apiKeys[0].key;
-
+      
       // Extract channel ID or handle from URL
       const patterns = {
         channel: /youtube\.com\/channel\/([a-zA-Z0-9_-]+)/i,
@@ -107,10 +105,10 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
         user: /youtube\.com\/user\/([^\/\s?&]+)/i,
         handleOnly: /@([^\/\s?&]+)/i
       };
-
+      
       let competitor_id = '';
       let searchTerm = '';
-
+      
       // Try to match direct channel ID first
       const channelMatch = competitorUrl.match(patterns.channel);
       if (channelMatch) {
@@ -127,7 +125,7 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
         // Assume it's a search term if no pattern matches
         searchTerm = competitorUrl;
       }
-
+      
       // If we have a direct ID, use it
       if (!competitor_id && searchTerm) {
         // Otherwise, search for the channel
@@ -140,14 +138,14 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
             key: youtubeApiKey
           }
         });
-
+        
         if (response.data.items?.length > 0) {
           competitor_id = response.data.items[0].id.channelId;
         } else {
           throw new Error('Canal não encontrado');
         }
       }
-
+      
       // Get channel details
       const channelResponse = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
         params: {
@@ -156,13 +154,13 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
           key: youtubeApiKey
         }
       });
-
+      
       if (!channelResponse.data.items || channelResponse.data.items.length === 0) {
         throw new Error('Detalhes do canal não encontrados');
       }
-
+      
       const channelDetails = channelResponse.data.items[0];
-
+      
       // Add the competitor to the database
       const { data, error } = await supabase
         .from('competitors')
@@ -175,9 +173,9 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
           }
         ])
         .select();
-
+      
       if (error) throw error;
-
+      
       // Update the competitors list
       setCompetitors([...(data as Competitor[]), ...competitors]);
       setCompetitorUrl('');
@@ -194,9 +192,9 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
         .from('competitors')
         .delete()
         .eq('id', id);
-
+      
       if (error) throw error;
-
+      
       // Update the competitors list
       setCompetitors(competitors.filter(comp => comp.id !== id));
     } catch (err) {
@@ -209,17 +207,17 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
       setShowApiKeyError(true);
       return;
     }
-
+    
     setIsGeneratingAnalysis(true);
     setError(null);
     setShowApiKeyError(false);
-
+    
     try {
       // Get competitor video data
       const competitorVideos = await Promise.all(
         competitors.map(async (competitor) => {
           const youtubeApiKey = apiKeys[0].key;
-
+          
           // Get videos from competitor
           const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
             params: {
@@ -231,9 +229,9 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
               key: youtubeApiKey
             }
           });
-
+          
           const videoIds = response.data.items.map((item: any) => item.id.videoId);
-
+          
           // Get detailed video info
           const videoDetailsResponse = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
             params: {
@@ -242,7 +240,7 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
               key: youtubeApiKey
             }
           });
-
+          
           return {
             channelTitle: competitor.title,
             videos: videoDetailsResponse.data.items.map((item: any) => ({
@@ -255,7 +253,7 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
           };
         })
       );
-
+      
       // Extract self channel data for comparison
       const ownChannelData = {
         videos: videoData.map(video => ({
@@ -265,15 +263,15 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
           commentCount: video.comment_count
         }))
       };
-
+      
       // Format data for the OpenAI API request
       const promptData = {
         competitors: competitorVideos,
         ownChannel: ownChannelData
       };
-
+      
       console.log('Enviando dados para análise:', promptData);
-
+      
       // Call OpenAI API
       const openAiResponse = await axios.post(
         'https://api.openai.com/v1/chat/completions',
@@ -303,15 +301,15 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
           }
         }
       );
-
+      
       console.log('Resposta da OpenAI:', openAiResponse.data);
-
+      
       // Parse e validar a resposta
       let analysisResult;
       try {
         const content = openAiResponse.data.choices[0].message.content;
         console.log('Conteúdo da resposta:', content);
-
+        
         // Tente extrair o JSON da resposta
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
@@ -319,13 +317,13 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
         } else {
           throw new Error('Formato JSON não encontrado na resposta');
         }
-
+        
         // Verifique se todos os campos necessários existem
-        if (!analysisResult.trends || !analysisResult.patterns ||
-          !analysisResult.viralPotential || !analysisResult.contentIdeas) {
+        if (!analysisResult.trends || !analysisResult.patterns || 
+            !analysisResult.viralPotential || !analysisResult.contentIdeas) {
           throw new Error('Resposta incompleta da IA');
         }
-
+        
         // Garanta que todos os campos são arrays
         analysisResult.trends = Array.isArray(analysisResult.trends) ? analysisResult.trends : [];
         analysisResult.patterns = Array.isArray(analysisResult.patterns) ? analysisResult.patterns : [];
@@ -335,11 +333,11 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
         console.error('Erro ao processar resposta:', err);
         throw new Error('Erro ao processar resposta da IA');
       }
-
+      
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
-
+      
       // Save the analysis to the database
       const { data, error } = await supabase
         .from('ai_analyses')
@@ -351,9 +349,9 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
           }
         ])
         .select();
-
+      
       if (error) throw error;
-
+      
       // Update the state with the new analysis
       setAiAnalysis(data[0] as AiAnalysisResult);
     } catch (err) {
@@ -372,7 +370,7 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
             <Sparkles className="w-5 h-5 text-purple-600 mr-2" />
             <h2 className="text-xl font-semibold text-gray-800">Análise de Concorrentes com IA</h2>
           </div>
-          <button
+          <button 
             onClick={() => setShowInfo(!showInfo)}
             className="text-gray-400 hover:text-gray-600 transition-colors"
             title="Informações sobre esta ferramenta"
@@ -380,7 +378,7 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
             <Info className="w-5 h-5" />
           </button>
         </div>
-
+        
         {showInfo && (
           <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-100 text-sm text-purple-800">
             <p className="mb-2">
@@ -394,15 +392,15 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
             </ol>
           </div>
         )}
-
+        
         <p className="text-gray-600 mb-6">
           Adicione canais concorrentes e use inteligência artificial para identificar tendências e oportunidades de conteúdo viral
         </p>
-
+        
         {/* Competitor Management */}
         <div className="mb-8">
           <h3 className="text-lg font-medium text-gray-800 mb-3">Gerenciar Concorrentes</h3>
-
+          
           <form onSubmit={handleAddCompetitor} className="mb-4">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="flex-grow">
@@ -434,7 +432,7 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
               </button>
             </div>
           </form>
-
+          
           {error && (
             <div className="p-4 mb-4 text-sm text-red-700 bg-red-50 rounded-lg border border-red-200">
               <div className="flex">
@@ -443,10 +441,10 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
               </div>
             </div>
           )}
-
+          
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <h4 className="font-medium text-gray-700 mb-3">Canais Concorrentes</h4>
-
+            
             {competitors.length === 0 ? (
               <p className="text-gray-500 text-sm">
                 Nenhum concorrente adicionado. Adicione canais para começar a análise.
@@ -469,39 +467,40 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
             )}
           </div>
         </div>
-
+        
         {/* OpenAI API Key */}
         <div className="mb-8">
           <h3 className="text-lg font-medium text-gray-800 mb-3 flex items-center">
             <Brain className="w-5 h-5 text-purple-600 mr-2" />
             Configuração da API OpenAI
           </h3>
-
+          
           <div className="flex flex-col md:flex-row gap-3 mb-2">
             <div className="flex-grow">
               <input
                 type="password"
                 placeholder="Insira sua chave API da OpenAI"
-                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${showApiKeyError ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
+                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                  showApiKeyError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
                 value={openaiApiKey}
                 onChange={(e) => setOpenaiApiKey(e.target.value)}
               />
             </div>
           </div>
-
+          
           {showApiKeyError && (
             <p className="text-sm text-red-600 mt-1 ml-1">
               Uma chave API da OpenAI é necessária para gerar análises com IA
             </p>
           )}
-
+          
           <p className="text-xs text-gray-500 mt-2">
             Sua chave API é usada apenas para esta análise e não é armazenada permanentemente.
             Obtenha uma chave em <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">platform.openai.com</a>
           </p>
         </div>
-
+        
         {/* Generate Analysis Button */}
         <div className="mb-4">
           <button
@@ -521,13 +520,13 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
               </>
             )}
           </button>
-
+          
           <p className="text-xs text-center text-gray-500 mt-2">
             Esta análise utiliza GPT-4o para processar dados de vídeos virais e gerar insights estratégicos
           </p>
         </div>
       </div>
-
+      
       {/* Analysis Results */}
       {aiAnalysis && (
         <div className="p-6 bg-gradient-to-r from-purple-50 to-purple-50">
@@ -537,16 +536,16 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
               Análise de Potencial Viral
             </h3>
             <p className="text-sm text-gray-600">
-              Gerada em {new Date(aiAnalysis.created_at).toLocaleDateString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
+              Gerada em {new Date(aiAnalysis.created_at).toLocaleDateString('pt-BR', { 
+                day: '2-digit', 
+                month: '2-digit', 
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
               })}
             </p>
           </div>
-
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white p-5 rounded-xl shadow-sm border border-purple-100">
               <h4 className="font-medium text-purple-700 mb-3">Tendências Identificadas</h4>
@@ -561,7 +560,7 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
                 ))}
               </ul>
             </div>
-
+            
             <div className="bg-white p-5 rounded-xl shadow-sm border border-purple-100">
               <h4 className="font-medium text-purple-700 mb-3">Padrões de Conteúdo</h4>
               <ul className="space-y-2">
@@ -575,7 +574,7 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
                 ))}
               </ul>
             </div>
-
+            
             <div className="bg-white p-5 rounded-xl shadow-sm border border-blue-100">
               <h4 className="font-medium text-blue-700 mb-3">Nichos com Potencial Viral</h4>
               <ul className="space-y-2">
@@ -589,7 +588,7 @@ const CompetitorAnalysis = ({ channelId, videoData }: CompetitorAnalysisProps) =
                 ))}
               </ul>
             </div>
-
+            
             <div className="bg-white p-5 rounded-xl shadow-sm border border-green-100 md:col-span-2">
               <h4 className="font-medium text-green-700 mb-3">Ideias de Conteúdo com Potencial Viral</h4>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
