@@ -1,49 +1,35 @@
 module.exports = {
-    apps: [
-        {
-            name: 'instagram-proxy',
-            script: './server/instagram-proxy-production.js',
-            instances: 2, // Número de instâncias (ajuste conforme CPU)
-            exec_mode: 'cluster',
-            env: {
-                NODE_ENV: 'production',
-                PORT: 3001,
-                PROXY_PORT: 3001
-            },
-            env_production: {
-                NODE_ENV: 'production',
-                PORT: 3001,
-                PROXY_PORT: 3001
-            },
-            // Configurações de monitoramento
-            max_memory_restart: '500M',
-            error_file: './logs/proxy-error.log',
-            out_file: './logs/proxy-out.log',
-            log_file: './logs/proxy-combined.log',
-            time: true,
+    apps: [{
+        name: 'instagram-proxy',
+        script: 'proxy-server.js',
+        instances: 2, // Usar 2 processos para redundância
+        exec_mode: 'cluster',
+        env: {
+            NODE_ENV: 'production',
+            PORT: 3001
+        },
+        env_production: {
+            NODE_ENV: 'production',
+            PORT: 3001
+        },
+        // Configurações de monitoramento
+        watch: false,
+        ignore_watch: ['node_modules', 'logs'],
+        max_memory_restart: '1G',
 
-            // Auto restart em caso de crash
-            autorestart: true,
-            watch: false,
-            max_restarts: 10,
-            min_uptime: '10s',
+        // Logs
+        log_file: '/var/log/pm2/instagram-proxy-combined.log',
+        out_file: '/var/log/pm2/instagram-proxy-out.log',
+        error_file: '/var/log/pm2/instagram-proxy-error.log',
+        log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
 
-            // Configurações de cluster
-            listen_timeout: 3000,
-            kill_timeout: 5000,
-        }
-    ],
+        // Auto restart configurações
+        restart_delay: 4000,
+        max_restarts: 10,
+        min_uptime: '10s',
 
-    deploy: {
-        production: {
-            user: 'instagram-app',
-            host: 'seu-ip-da-vps',
-            ref: 'origin/main',
-            repo: 'https://github.com/seu-usuario/seu-repositorio.git',
-            path: '/var/www/instagram-analytics',
-            'pre-deploy-local': '',
-            'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production',
-            'pre-setup': ''
-        }
-    }
+        // Health check
+        health_check_grace_period: 3000,
+        health_check_fatal_exceptions: true
+    }]
 }; 

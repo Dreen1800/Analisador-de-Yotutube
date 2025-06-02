@@ -55,19 +55,21 @@ export default function InstagramAnalytics() {
         checkActiveScrapingJobs,
         deleteProfile,
         isLoading,
-        error
+        error,
+        fetchUserJobs
     } = useInstagramStore();
 
     useEffect(() => {
         fetchProfiles();
+        fetchUserJobs();
         // Check for active jobs on load
         checkActiveScrapingJobs();
-        
+
         // Animation effect on mount
         setTimeout(() => {
             setIsAppearing(true);
         }, 100);
-    }, [fetchProfiles, checkActiveScrapingJobs]);
+    }, [fetchProfiles, fetchUserJobs, checkActiveScrapingJobs]);
 
     const handleProfileSelect = (profile: any) => {
         setCurrentProfile(profile);
@@ -153,7 +155,7 @@ export default function InstagramAnalytics() {
     };
 
     // Filter profiles based on search term
-    const filteredProfiles = profiles.filter(profile => 
+    const filteredProfiles = profiles.filter(profile =>
         profile.username.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -241,15 +243,14 @@ export default function InstagramAnalytics() {
                                             {filteredProfiles.map((profile) => (
                                                 <div
                                                     key={profile.id}
-                                                    className={`flex items-center px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors relative group ${
-                                                        currentProfile?.id === profile.id ? 'bg-[#9e46d3]/5 hover:bg-[#9e46d3]/10' : ''
-                                                    }`}
+                                                    className={`flex items-center px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors relative group ${currentProfile?.id === profile.id ? 'bg-[#9e46d3]/5 hover:bg-[#9e46d3]/10' : ''
+                                                        }`}
                                                     onClick={() => handleProfileSelect(profile)}
                                                 >
                                                     {currentProfile?.id === profile.id && (
                                                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#9e46d3]"></div>
                                                     )}
-                                                    
+
                                                     <div className="relative mr-3">
                                                         {profile.profilePicUrl && !imgErrors[profile.id] ? (
                                                             <div className={`${currentProfile?.id === profile.id ? 'ring-2 ring-[#9e46d3]' : 'ring-1 ring-gray-200'} rounded-full`}>
@@ -263,14 +264,13 @@ export default function InstagramAnalytics() {
                                                                 />
                                                             </div>
                                                         ) : (
-                                                            <div className={`w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center ${
-                                                                currentProfile?.id === profile.id ? 'ring-2 ring-[#9e46d3]' : 'ring-1 ring-gray-200'
-                                                            }`}>
+                                                            <div className={`w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center ${currentProfile?.id === profile.id ? 'ring-2 ring-[#9e46d3]' : 'ring-1 ring-gray-200'
+                                                                }`}>
                                                                 <Instagram className="w-6 h-6 text-gray-400" />
                                                             </div>
                                                         )}
                                                     </div>
-                                                    
+
                                                     <div className="flex-1 min-w-0">
                                                         <div className="font-medium text-gray-900 truncate">@{profile.username}</div>
                                                         <div className="text-xs text-gray-500 flex items-center mt-0.5">
@@ -279,14 +279,14 @@ export default function InstagramAnalytics() {
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <div className="flex items-center gap-2">
                                                         {currentProfile?.id === profile.id && (
                                                             <div className="h-6 w-6 rounded-full bg-[#9e46d3]/10 flex items-center justify-center">
                                                                 <ArrowRight className="h-3.5 w-3.5 text-[#9e46d3]" />
                                                             </div>
                                                         )}
-                                                        
+
                                                         <button
                                                             onClick={(e) => handleDeleteClick(e, profile.id)}
                                                             className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
@@ -328,7 +328,7 @@ export default function InstagramAnalytics() {
             {/* Delete Confirmation Modal */}
             {profileToDelete && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center overflow-y-auto transition-all duration-300">
-                    <div 
+                    <div
                         className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl transform transition-all duration-300"
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -339,7 +339,7 @@ export default function InstagramAnalytics() {
                                 </div>
                                 <h3 className="text-lg font-medium">Excluir Perfil</h3>
                             </div>
-                            <button 
+                            <button
                                 onClick={handleCancelDelete}
                                 className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
                             >

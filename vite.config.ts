@@ -104,6 +104,55 @@ export default defineConfig({
           });
         }
       },
+      // Proxy dinâmico para imagens do Instagram que aceita qualquer domínio
+      '/api/instagram-proxy': {
+        target: 'https://www.instagram.com',
+        changeOrigin: true,
+        bypass: (req, res) => {
+          // Extrair URL da query string
+          const url = new URL(req.url, 'http://localhost');
+          const imageUrl = url.searchParams.get('url');
+
+          if (!imageUrl) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'text/plain');
+            res.end('URL parameter is required');
+            return true;
+          }
+
+          // Fazer proxy da imagem usando fetch
+          (async () => {
+            try {
+              const response = await fetch(imageUrl, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+                  'Referer': 'https://www.instagram.com/',
+                  'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                }
+              });
+
+              if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              }
+
+              res.statusCode = 200;
+              res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.setHeader('Cache-Control', 'public, max-age=3600');
+
+              const buffer = await response.arrayBuffer();
+              res.end(Buffer.from(buffer));
+            } catch (error) {
+              console.error('Erro no proxy de imagem:', error);
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'text/plain');
+              res.end('Erro ao carregar imagem');
+            }
+          })();
+
+          return true; // Bypass normal proxy handling
+        }
+      },
       // Novo proxy para API de proxy de imagens do Instagram (baseado na URL)
       '/api/proxy-image': {
         target: 'https://www.instagram.com',

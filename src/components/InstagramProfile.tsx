@@ -73,7 +73,7 @@ const InstagramProfile: React.FC<InstagramProfileProps> = ({ profile }) => {
                 {/* Container para foto + informações */}
                 <div className="flex flex-col px-6">
                     {/* Foto de perfil em container separado */}
-                    <div className="flex justify-start -mt-14 mb-4 relative z-1">
+                    <div className="flex justify-start -mt-14 mb-4 relative z-10">
                         <div className="p-1 rounded-full bg-[#9e46d3] shadow-xl">
                             {!imgError && profile.profile_pic_url ? (
                                 <img
@@ -84,7 +84,7 @@ const InstagramProfile: React.FC<InstagramProfileProps> = ({ profile }) => {
                                     referrerPolicy="no-referrer"
                                     crossOrigin="anonymous"
                                     loading="eager"
-                                    fetchPriority="high"
+                                    fetchpriority="high"
                                 />
                             ) : (
                                 <div className="w-28 h-28 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center">

@@ -134,13 +134,13 @@ const AiChannelAnalyzer = () => {
         .eq('channel_id', channelId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        if (error.code !== 'PGRST116') { // No rows returned is not a real error
-          throw error;
-        }
-      } else {
+        throw error;
+      }
+
+      if (data) {
         setAiAnalysis(data);
       }
     } catch (err) {
@@ -156,11 +156,11 @@ const AiChannelAnalyzer = () => {
         .eq('channel_id', channelId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 
-      setVideoData(data.videos || []);
+      setVideoData(data?.videos || []);
     } catch (err) {
       console.error('Error fetching video data:', err);
       setVideoData([]);

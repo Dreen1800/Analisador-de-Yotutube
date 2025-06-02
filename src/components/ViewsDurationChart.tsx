@@ -1,7 +1,30 @@
 import { useEffect, useState } from 'react';
-import '../lib/chartConfig'; // Importar configuração centralizada do Chart.js
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ScatterController,
+  Filler,
+} from 'chart.js';
 import { Scatter } from 'react-chartjs-2';
 import { TrendingUp, Info, Eye, Clock } from 'lucide-react';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  ScatterController,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 interface Video {
   video_id: string;

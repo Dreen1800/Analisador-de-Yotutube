@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Instagram, Search, Loader, X, RefreshCw, Check, AlertCircle, Clock, Info, UserPlus, ExternalLink } from 'lucide-react';
+import { Instagram, Search, Loader, X, RefreshCw, Check, AlertCircle, Clock, Info, UserPlus, ExternalLink, Settings } from 'lucide-react';
 import { useInstagramStore, ScrapingJobStatus } from '../stores/instagramStore';
+import { ScrapingParams } from '../services/instagramService';
 
 interface InstagramProfileModalProps {
     isOpen: boolean;
@@ -13,6 +14,13 @@ export default function InstagramProfileModal({ isOpen, onClose }: InstagramProf
     const [error, setError] = useState<string | null>(null);
     const [checkingStatus, setCheckingStatus] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const [showAdvanced, setShowAdvanced] = useState(false);
+
+    // Parâmetros de scraping
+    const [scrapingParams, setScrapingParams] = useState<ScrapingParams>({
+        resultsLimit: 10,
+        onlyPostsNewerThan: "365 days"
+    });
 
     const {
         scrapeProfile,
@@ -45,7 +53,7 @@ export default function InstagramProfileModal({ isOpen, onClose }: InstagramProf
         setError(null);
 
         try {
-            await scrapeProfile(username.trim());
+            await scrapeProfile(username.trim(), scrapingParams);
             setUsername('');
         } catch (err: any) {
             setError(err.message || 'Erro ao analisar perfil do Instagram');
@@ -175,7 +183,7 @@ export default function InstagramProfileModal({ isOpen, onClose }: InstagramProf
                     </p>
 
                     <form onSubmit={handleSubmit} className="mb-6">
-                        <div className="relative mb-3">
+                        <div className="relative mb-4">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <Search className="h-5 w-5 text-gray-400" />
                             </div>
@@ -188,6 +196,75 @@ export default function InstagramProfileModal({ isOpen, onClose }: InstagramProf
                                 className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#9e46d3] focus:border-[#9e46d3] transition-all duration-200"
                                 disabled={loading || isLoading}
                             />
+                        </div>
+
+                        {/* Configurações Avançadas */}
+                        <div className="mb-4">
+                            <button
+                                type="button"
+                                onClick={() => setShowAdvanced(!showAdvanced)}
+                                className="flex items-center text-sm text-gray-600 hover:text-[#9e46d3] transition-colors duration-200"
+                            >
+                                <Settings className="h-4 w-4 mr-2" />
+                                Configurações Avançadas
+                                <div className={`ml-2 transform transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}>
+                                    ▼
+                                </div>
+                            </button>
+
+                            {showAdvanced && (
+                                <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
+                                    <div>
+                                        <label htmlFor="resultsLimit" className="block text-sm font-medium text-gray-700 mb-2">
+                                            Quantidade de Posts
+                                        </label>
+                                        <select
+                                            id="resultsLimit"
+                                            value={scrapingParams.resultsLimit}
+                                            onChange={(e) => setScrapingParams(prev => ({
+                                                ...prev,
+                                                resultsLimit: parseInt(e.target.value)
+                                            }))}
+                                            className="block w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#9e46d3] focus:border-[#9e46d3] transition-all duration-200"
+                                            disabled={loading || isLoading}
+                                        >
+                                            <option value={5}>5 posts</option>
+                                            <option value={10}>10 posts</option>
+                                            <option value={20}>20 posts</option>
+                                            <option value={50}>50 posts</option>
+                                            <option value={100}>100 posts</option>
+                                        </select>
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            Número máximo de posts para analisar
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="timeRange" className="block text-sm font-medium text-gray-700 mb-2">
+                                            Período dos Posts
+                                        </label>
+                                        <select
+                                            id="timeRange"
+                                            value={scrapingParams.onlyPostsNewerThan}
+                                            onChange={(e) => setScrapingParams(prev => ({
+                                                ...prev,
+                                                onlyPostsNewerThan: e.target.value
+                                            }))}
+                                            className="block w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#9e46d3] focus:border-[#9e46d3] transition-all duration-200"
+                                            disabled={loading || isLoading}
+                                        >
+                                            <option value="30 days">Últimos 30 dias</option>
+                                            <option value="90 days">Últimos 3 meses</option>
+                                            <option value="180 days">Últimos 6 meses</option>
+                                            <option value="365 days">Último ano</option>
+                                            <option value="730 days">Últimos 2 anos</option>
+                                        </select>
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            Analisar apenas posts mais recentes que este período
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <button
@@ -237,6 +314,21 @@ export default function InstagramProfileModal({ isOpen, onClose }: InstagramProf
                                             <ul className="divide-y divide-gray-100">
                                                 {activeScrapingJobs.map(job => {
                                                     const { icon, bgColor, text, textColor } = getJobStatusInfo(job.status, job.error_message);
+
+                                                    // Determinar o tipo do job para exibição
+                                                    const getJobTypeDisplay = (jobType?: string) => {
+                                                        switch (jobType) {
+                                                            case 'profile_data':
+                                                                return '📊 Dados do Perfil';
+                                                            case 'posts':
+                                                                return '📸 Posts';
+                                                            case 'combined':
+                                                                return '🔄 Completo';
+                                                            default:
+                                                                return '🔄 Análise';
+                                                        }
+                                                    };
+
                                                     return (
                                                         <li key={job.id} className="py-3">
                                                             <div className="flex items-center justify-between">
@@ -244,7 +336,12 @@ export default function InstagramProfileModal({ isOpen, onClose }: InstagramProf
                                                                     <div className={`h-6 w-6 rounded-full ${bgColor} flex items-center justify-center mr-3`}>
                                                                         {icon}
                                                                     </div>
-                                                                    <span className="font-medium">@{job.profile_username}</span>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-medium">@{job.profile_username}</span>
+                                                                        <span className="text-xs text-gray-500">
+                                                                            {getJobTypeDisplay(job.job_type)}
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
                                                                 <div className={`text-sm font-medium ${textColor} px-2.5 py-1 rounded-full bg-gray-50`}>
                                                                     {text}

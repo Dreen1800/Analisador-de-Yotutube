@@ -200,9 +200,10 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
         .from('channels')
         .select('*')
         .eq('channel_id', channelId)
-        .single();
+        .maybeSingle();
 
       if (channelError) throw channelError;
+      if (!channelData) throw new Error('Channel not found');
 
       // Get the latest analysis
       const { data: analysisData, error: analysisError } = await supabase
@@ -211,9 +212,10 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
         .eq('channel_id', channelId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (analysisError) throw analysisError;
+      if (!analysisData) throw new Error('No analysis found for this channel');
 
       set({
         currentChannel: channelData as Channel,
@@ -283,16 +285,13 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
         .select('*')
         .eq('is_main', true)
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          return null;
-        }
         throw error;
       }
 
-      return data as Channel;
+      return data as Channel | null;
     } catch (error) {
       set({ error: (error as Error).message });
       return null;

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChannelStore } from '../stores/channelStore';
 import { useApiKeyStore } from '../stores/apiKeyStore';
-import { createDateFilter } from '../services/youtubeService';
 import ChannelHeader from './ChannelHeader';
 import VideoList from './VideoList';
 import VideoGallery from './VideoGallery';
@@ -11,7 +10,7 @@ import ViewsDurationChart from './ViewsDurationChart';
 import ExportOptions from './ExportOptions';
 import CompetitorAnalysis from './CompetitorAnalysis';
 import ApiKeysModal from './ApiKeysModal';
-import { Search, AlertCircle, Settings, BarChart2, Grid, List, Youtube, Loader, X, Calendar } from 'lucide-react';
+import { Search, AlertCircle, Settings, BarChart2, Grid, List, Youtube, Loader, X } from 'lucide-react';
 
 interface ChannelAnalysisModalProps {
     isOpen: boolean;
@@ -23,10 +22,6 @@ interface AnalysisOptions {
     maxVideos: number;
     sortBy: 'date' | 'views' | 'engagement';
     includeShorts: boolean;
-    dateFilter?: {
-        publishedAfter?: string;
-        publishedBefore?: string;
-    };
 }
 
 const ChannelAnalysisModal = ({ isOpen, onClose, channelId }: ChannelAnalysisModalProps) => {
@@ -52,10 +47,6 @@ const ChannelAnalysisModal = ({ isOpen, onClose, channelId }: ChannelAnalysisMod
         sortBy: 'views',
         includeShorts: false
     });
-    const [dateFilterType, setDateFilterType] = useState<'none' | 'preset' | 'custom'>('none');
-    const [presetFilter, setPresetFilter] = useState<string>('lastMonth');
-    const [customStartDate, setCustomStartDate] = useState<string>('');
-    const [customEndDate, setCustomEndDate] = useState<string>('');
 
     useEffect(() => {
         if (isOpen) {
@@ -71,47 +62,8 @@ const ChannelAnalysisModal = ({ isOpen, onClose, channelId }: ChannelAnalysisMod
         e.preventDefault();
         if (!channelUrl) return;
 
-        // Aplicar filtros de data baseado na seleção
-        let finalOptions = { ...options };
-
-        if (dateFilterType === 'preset') {
-            switch (presetFilter) {
-                case 'lastWeek':
-                    finalOptions.dateFilter = createDateFilter.thisWeek();
-                    break;
-                case 'lastMonth':
-                    finalOptions.dateFilter = createDateFilter.thisMonth();
-                    break;
-                case 'last3Months':
-                    finalOptions.dateFilter = createDateFilter.lastMonths(3);
-                    break;
-                case 'last6Months':
-                    finalOptions.dateFilter = createDateFilter.lastMonths(6);
-                    break;
-                case 'lastYear':
-                    finalOptions.dateFilter = createDateFilter.thisYear();
-                    break;
-                case 'last30Days':
-                    finalOptions.dateFilter = createDateFilter.lastDays(30);
-                    break;
-                case 'last90Days':
-                    finalOptions.dateFilter = createDateFilter.lastDays(90);
-                    break;
-            }
-        } else if (dateFilterType === 'custom') {
-            if (customStartDate || customEndDate) {
-                finalOptions.dateFilter = {};
-                if (customStartDate) {
-                    finalOptions.dateFilter.publishedAfter = new Date(customStartDate).toISOString();
-                }
-                if (customEndDate) {
-                    finalOptions.dateFilter.publishedBefore = new Date(customEndDate).toISOString();
-                }
-            }
-        }
-
         try {
-            await analyzeChannel(channelUrl, finalOptions);
+            await analyzeChannel(channelUrl, options);
             setChannelUrl('');
         } catch (error) {
             console.error('Erro ao analisar canal:', error);
@@ -292,108 +244,6 @@ const ChannelAnalysisModal = ({ isOpen, onClose, channelId }: ChannelAnalysisMod
                                                             </div>
                                                         </div>
                                                     </div>
-
-                                                    {/* Filtros de Data */}
-                                                    <div className="pt-4 border-t border-gray-200">
-                                                        <div className="flex items-center mb-3">
-                                                            <Calendar className="w-4 h-4 text-gray-600 mr-2" />
-                                                            <label className="block text-sm font-medium text-gray-700">
-                                                                Filtrar por Data de Publicação
-                                                            </label>
-                                                        </div>
-
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center space-x-4">
-                                                                <label className="flex items-center">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name="dateFilter"
-                                                                        value="none"
-                                                                        checked={dateFilterType === 'none'}
-                                                                        onChange={(e) => setDateFilterType(e.target.value as 'none' | 'preset' | 'custom')}
-                                                                        className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
-                                                                    />
-                                                                    <span className="ml-2 text-sm text-gray-700">Todos os vídeos</span>
-                                                                </label>
-                                                                <label className="flex items-center">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name="dateFilter"
-                                                                        value="preset"
-                                                                        checked={dateFilterType === 'preset'}
-                                                                        onChange={(e) => setDateFilterType(e.target.value as 'none' | 'preset' | 'custom')}
-                                                                        className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
-                                                                    />
-                                                                    <span className="ml-2 text-sm text-gray-700">Período predefinido</span>
-                                                                </label>
-                                                                <label className="flex items-center">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name="dateFilter"
-                                                                        value="custom"
-                                                                        checked={dateFilterType === 'custom'}
-                                                                        onChange={(e) => setDateFilterType(e.target.value as 'none' | 'preset' | 'custom')}
-                                                                        className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
-                                                                    />
-                                                                    <span className="ml-2 text-sm text-gray-700">Período personalizado</span>
-                                                                </label>
-                                                            </div>
-
-                                                            {dateFilterType === 'preset' && (
-                                                                <div>
-                                                                    <select
-                                                                        value={presetFilter}
-                                                                        onChange={(e) => setPresetFilter(e.target.value)}
-                                                                        className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                                                                    >
-                                                                        <option value="lastWeek">Esta semana</option>
-                                                                        <option value="lastMonth">Este mês</option>
-                                                                        <option value="last30Days">Últimos 30 dias</option>
-                                                                        <option value="last3Months">Últimos 3 meses</option>
-                                                                        <option value="last6Months">Últimos 6 meses</option>
-                                                                        <option value="last90Days">Últimos 90 dias</option>
-                                                                        <option value="lastYear">Este ano</option>
-                                                                    </select>
-                                                                </div>
-                                                            )}
-
-                                                            {dateFilterType === 'custom' && (
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                                    <div>
-                                                                        <label htmlFor="startDate" className="block text-xs font-medium text-gray-600 mb-1">
-                                                                            Data de início (opcional)
-                                                                        </label>
-                                                                        <input
-                                                                            type="date"
-                                                                            id="startDate"
-                                                                            value={customStartDate}
-                                                                            onChange={(e) => setCustomStartDate(e.target.value)}
-                                                                            className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                                                                        />
-                                                                    </div>
-                                                                    <div>
-                                                                        <label htmlFor="endDate" className="block text-xs font-medium text-gray-600 mb-1">
-                                                                            Data de fim (opcional)
-                                                                        </label>
-                                                                        <input
-                                                                            type="date"
-                                                                            id="endDate"
-                                                                            value={customEndDate}
-                                                                            onChange={(e) => setCustomEndDate(e.target.value)}
-                                                                            className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            {dateFilterType !== 'none' && (
-                                                                <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded border border-blue-200">
-                                                                    <strong>💡 Dica:</strong> Filtrar por data pode reduzir significativamente o número de vídeos analisados,
-                                                                    especialmente para canais com pouco conteúdo recente.
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -426,47 +276,6 @@ const ChannelAnalysisModal = ({ isOpen, onClose, channelId }: ChannelAnalysisMod
                                         channel={currentChannel}
                                         analysisDate={currentAnalysis.analysis_date}
                                     />
-
-                                    {/* Resumo dos Filtros Aplicados */}
-                                    {(dateFilterType !== 'none' || !options.includeShorts || options.maxVideos !== 50) && (
-                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                                            <h3 className="text-sm font-medium text-blue-800 mb-2">Filtros Aplicados na Análise:</h3>
-                                            <div className="flex flex-wrap gap-2 text-xs">
-                                                {options.maxVideos !== 50 && (
-                                                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                                        {options.maxVideos} vídeos
-                                                    </span>
-                                                )}
-                                                {!options.includeShorts && (
-                                                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                                        Sem Shorts
-                                                    </span>
-                                                )}
-                                                {dateFilterType === 'preset' && (
-                                                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                                        📅 {presetFilter === 'lastWeek' ? 'Esta semana' :
-                                                            presetFilter === 'lastMonth' ? 'Este mês' :
-                                                                presetFilter === 'last30Days' ? 'Últimos 30 dias' :
-                                                                    presetFilter === 'last3Months' ? 'Últimos 3 meses' :
-                                                                        presetFilter === 'last6Months' ? 'Últimos 6 meses' :
-                                                                            presetFilter === 'last90Days' ? 'Últimos 90 dias' :
-                                                                                presetFilter === 'lastYear' ? 'Este ano' : presetFilter}
-                                                    </span>
-                                                )}
-                                                {dateFilterType === 'custom' && (customStartDate || customEndDate) && (
-                                                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                                        📅 {customStartDate && `De: ${new Date(customStartDate).toLocaleDateString('pt-BR')}`}
-                                                        {customStartDate && customEndDate && ' - '}
-                                                        {customEndDate && `Até: ${new Date(customEndDate).toLocaleDateString('pt-BR')}`}
-                                                    </span>
-                                                )}
-                                                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                                    Ordenado por: {options.sortBy === 'views' ? 'Visualizações' :
-                                                        options.sortBy === 'date' ? 'Data' : 'Engajamento'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                                         <div className="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
